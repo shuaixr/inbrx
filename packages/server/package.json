@@ -13,7 +13,8 @@
     "check": "tsc --noEmit -p tsconfig.json && node --check ./bin/inbrix-smtp.js"
   },
   "dependencies": {
-    "@inbrix/web": "0.1.0"
+    "@inbrix/web": "0.1.0",
+    "commander": "^14.0.3"
   },
   "devDependencies": {
     "tsx": "^4.19.0"

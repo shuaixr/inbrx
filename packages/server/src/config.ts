@@ -1,5 +1,7 @@
 import type { AppConfig } from './types.js';
 
+export type ConfigOverrides = Partial<Record<keyof AppConfig, string | number | undefined>>;
+
 const DEFAULTS: AppConfig = {
   smtpHost: '127.0.0.1',
   smtpPort: 2525,
@@ -8,52 +10,14 @@ const DEFAULTS: AppConfig = {
   maxMessages: 500
 };
 
-const FLAG_MAP = {
-  '--smtp-host': 'smtpHost',
-  '--smtp-port': 'smtpPort',
-  '--http-host': 'httpHost',
-  '--http-port': 'httpPort',
-  '--max-messages': 'maxMessages'
-} as const;
-
-type FlagName = keyof typeof FLAG_MAP;
-
-export function loadConfig(args: string[]): AppConfig {
+export function loadConfig(overrides: ConfigOverrides = {}): AppConfig {
   const config: AppConfig = {
-    smtpHost: process.env.SMTP_TEST_SMTP_HOST || DEFAULTS.smtpHost,
-    smtpPort: readNumber(process.env.SMTP_TEST_SMTP_PORT, DEFAULTS.smtpPort),
-    httpHost: process.env.SMTP_TEST_HTTP_HOST || DEFAULTS.httpHost,
-    httpPort: readNumber(process.env.SMTP_TEST_HTTP_PORT, DEFAULTS.httpPort),
-    maxMessages: readNumber(process.env.SMTP_TEST_MAX_MESSAGES, DEFAULTS.maxMessages)
+    smtpHost: readString(overrides.smtpHost, process.env.SMTP_TEST_SMTP_HOST, DEFAULTS.smtpHost),
+    smtpPort: readNumber(overrides.smtpPort, process.env.SMTP_TEST_SMTP_PORT, DEFAULTS.smtpPort),
+    httpHost: readString(overrides.httpHost, process.env.SMTP_TEST_HTTP_HOST, DEFAULTS.httpHost),
+    httpPort: readNumber(overrides.httpPort, process.env.SMTP_TEST_HTTP_PORT, DEFAULTS.httpPort),
+    maxMessages: readNumber(overrides.maxMessages, process.env.SMTP_TEST_MAX_MESSAGES, DEFAULTS.maxMessages)
   };
-
-  for (let index = 0; index < args.length; index += 1) {
-    const arg = args[index];
-    if (!arg) {
-      continue;
-    }
-
-    const [flag, inlineValue] = arg.includes('=') ? arg.split('=', 2) : [arg, undefined];
-    if (!isFlagName(flag)) {
-      throw new Error(`Unknown option "${arg}". Run "inbrix-smtp help" for usage.`);
-    }
-
-    const key = FLAG_MAP[flag];
-    const value = inlineValue ?? args[index + 1];
-    if (value === undefined || value.startsWith('--')) {
-      throw new Error(`Missing value for ${flag}.`);
-    }
-
-    if (inlineValue === undefined) {
-      index += 1;
-    }
-
-    if (key === 'smtpPort' || key === 'httpPort' || key === 'maxMessages') {
-      config[key] = readNumber(value, null);
-    } else {
-      config[key] = value;
-    }
-  }
 
   assertPort(config.smtpPort, 'SMTP port');
   assertPort(config.httpPort, 'HTTP port');
@@ -65,34 +29,33 @@ export function loadConfig(args: string[]): AppConfig {
   return config;
 }
 
-export function printHelp(): void {
-  console.log(`Inbrix
-
-Usage:
-  inbrix-smtp start [options]
-  inbrix-smtp help
-
-Options:
-  --smtp-host <host>       SMTP bind host. Default: ${DEFAULTS.smtpHost}
-  --smtp-port <port>       SMTP port. Default: ${DEFAULTS.smtpPort}
-  --http-host <host>       HTTP bind host. Default: ${DEFAULTS.httpHost}
-  --http-port <port>       HTTP port. Default: ${DEFAULTS.httpPort}
-  --max-messages <count>   Maximum retained messages. Default: ${DEFAULTS.maxMessages}
-
-Environment:
-  SMTP_TEST_SMTP_HOST
-  SMTP_TEST_SMTP_PORT
-  SMTP_TEST_HTTP_HOST
-  SMTP_TEST_HTTP_PORT
-  SMTP_TEST_MAX_MESSAGES
-`);
+export function getDefaultConfig(): AppConfig {
+  return { ...DEFAULTS };
 }
 
-function readNumber(value: string | undefined | null, fallback: number | null): number {
-  if (value === undefined || value === null || value === '') {
-    if (fallback === null) {
-      throw new Error('Expected an integer value.');
-    }
+function readString(
+  override: string | number | undefined,
+  envValue: string | undefined,
+  fallback: string
+): string {
+  if (override !== undefined && override !== '') {
+    return String(override);
+  }
+
+  if (envValue !== undefined && envValue !== '') {
+    return envValue;
+  }
+
+  return fallback;
+}
+
+function readNumber(
+  override: string | number | undefined,
+  envValue: string | undefined,
+  fallback: number
+): number {
+  const value = override ?? envValue;
+  if (value === undefined || value === '') {
     return fallback;
   }
 
@@ -108,8 +71,4 @@ function assertPort(value: number, label: string): void {
   if (!Number.isInteger(value) || value < 1 || value > 65535) {
     throw new Error(`${label} must be an integer between 1 and 65535.`);
   }
-}
-
-function isFlagName(value: string | undefined): value is FlagName {
-  return value !== undefined && value in FLAG_MAP;
 }
