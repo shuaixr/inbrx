@@ -10,7 +10,9 @@
     "build": "tsc -p tsconfig.json",
     "start": "npm run build && node ./bin/inbrix-smtp.js start",
     "dev": "tsx watch ./src/cli.ts start",
-    "check": "tsc --noEmit -p tsconfig.json && node --check ./bin/inbrix-smtp.js"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check": "tsc --noEmit -p tsconfig.json && node --check ./bin/inbrix-smtp.js && npm run test"
   },
   "dependencies": {
     "@hono/node-server": "^2.0.8",
@@ -22,8 +24,11 @@
   },
   "devDependencies": {
     "@types/mailparser": "^3.4.6",
+    "@types/nodemailer": "^8.0.1",
     "@types/smtp-server": "^3.5.13",
-    "tsx": "^4.19.0"
+    "nodemailer": "^9.0.3",
+    "tsx": "^4.19.0",
+    "vitest": "^3.2.4"
   },
   "engines": {
     "node": ">=20"
