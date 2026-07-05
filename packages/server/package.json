@@ -1,0 +1,24 @@
+{
+  "name": "@inbrix/server",
+  "version": "0.1.0",
+  "description": "SMTP capture server and CLI for Inbrix.",
+  "type": "module",
+  "bin": {
+    "inbrix-smtp": "./bin/inbrix-smtp.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "npm run build && node ./bin/inbrix-smtp.js start",
+    "dev": "tsx watch ./src/cli.ts start",
+    "check": "tsc --noEmit -p tsconfig.json && node --check ./bin/inbrix-smtp.js"
+  },
+  "dependencies": {
+    "@inbrix/web": "0.1.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

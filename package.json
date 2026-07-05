@@ -1,0 +1,32 @@
+{
+  "name": "inbrix",
+  "version": "0.1.0",
+  "description": "A local SMTP testing environment for developers.",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build -ws",
+    "start": "npm run build && node ./packages/server/bin/inbrix-smtp.js start",
+    "dev": "npm run dev -w @inbrix/server",
+    "dev:server": "npm run dev -w @inbrix/server",
+    "dev:web": "npm run dev -w @inbrix/web",
+    "check": "npm run check -ws"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "smtp",
+    "email",
+    "testing",
+    "developer-tools"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "typescript": "^5.5.0"
+  }
+}
