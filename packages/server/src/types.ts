@@ -15,6 +15,26 @@ export type CapturedAttachment = {
 
 export type HeaderValue = string | string[];
 
+export type CapturedSmtpSession = {
+  id: string;
+  remoteAddress: string;
+  remotePort: number;
+  clientHostname: string;
+  openingCommand: string;
+  hostNameAppearsAs: string;
+  secure: boolean;
+  envelope: {
+    mailFrom: {
+      address: string;
+      args: Record<string, unknown>;
+    } | null;
+    rcptTo: Array<{
+      address: string;
+      args: Record<string, unknown>;
+    }>;
+  };
+};
+
 export type CapturedMessage = {
   id: string;
   receivedAt: string;
@@ -29,6 +49,7 @@ export type CapturedMessage = {
   attachments: CapturedAttachment[];
   rawSizeBytes: number;
   raw: string;
+  smtp: CapturedSmtpSession;
 };
 
 export type MailEnvelope = {

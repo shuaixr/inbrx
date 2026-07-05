@@ -117,7 +117,8 @@ function toMessageDetail(message: CapturedMessage): CapturedMessage {
     text: message.text,
     html: message.html,
     attachments: message.attachments,
-    raw: message.raw
+    raw: message.raw,
+    smtp: message.smtp
   };
 }
 
