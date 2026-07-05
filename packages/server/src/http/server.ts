@@ -1,8 +1,10 @@
-import http from 'node:http';
 import { createReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
+import { Readable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
+import { serve, type ServerType } from '@hono/node-server';
+import { Hono } from 'hono';
 import type { CapturedMessage, ManagedServer, MessageStore } from '../types.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -11,31 +13,43 @@ const WEB_ROOT = path.resolve(__dirname, '../../..', 'web/dist');
 type MessageSummary = Pick<CapturedMessage, 'id' | 'receivedAt' | 'from' | 'to' | 'subject' | 'rawSizeBytes'>;
 
 export function createHttpServer({ store }: { store: MessageStore }): ManagedServer {
-  const server = http.createServer((request, response) => {
-    handleRequest(request, response, store).catch((error: unknown) => {
-      console.error(error);
-      sendJson(response, 500, { error: 'Internal server error' });
-    });
-  });
+  const app = createHttpApp({ store });
+  let server: ServerType | null = null;
 
   return {
     listen(port, host) {
       return new Promise<void>((resolve, reject) => {
-        server.once('error', reject);
-        server.listen(port, host, () => {
-          server.off('error', reject);
-          resolve();
-        });
+        const listeningServer = serve(
+          {
+            fetch: app.fetch,
+            hostname: host,
+            port
+          },
+          () => {
+            listeningServer.off('error', reject);
+            server = listeningServer;
+            resolve();
+          }
+        );
+
+        listeningServer.once('error', reject);
       });
     },
 
     close() {
       return new Promise<void>((resolve, reject) => {
-        server.close((error) => {
+        if (!server) {
+          resolve();
+          return;
+        }
+
+        server.close((error?: Error) => {
           if (error) {
             reject(error);
             return;
           }
+
+          server = null;
           resolve();
         });
       });
@@ -43,50 +57,44 @@ export function createHttpServer({ store }: { store: MessageStore }): ManagedSer
   };
 }
 
-async function handleRequest(
-  request: http.IncomingMessage,
-  response: http.ServerResponse,
-  store: MessageStore
-): Promise<void> {
-  const url = new URL(request.url || '/', 'http://localhost');
+export function createHttpApp({ store }: { store: MessageStore }): Hono {
+  const app = new Hono();
 
-  if (url.pathname === '/api/health' && request.method === 'GET') {
-    sendJson(response, 200, { status: 'ok' });
-    return;
-  }
+  app.onError((error, c) => {
+    console.error(error);
+    return c.json({ error: 'Internal server error' }, 500);
+  });
 
-  if (url.pathname === '/api/messages' && request.method === 'GET') {
-    sendJson(response, 200, {
+  app.get('/api/health', (c) => c.json({ status: 'ok' }));
+
+  app.get('/api/messages', (c) =>
+    c.json({
       messages: store.list().map(toMessageSummary)
-    });
-    return;
-  }
+    })
+  );
 
-  if (url.pathname === '/api/messages' && request.method === 'DELETE') {
+  app.delete('/api/messages', (c) => {
     const deleted = store.clear();
-    sendJson(response, 200, { deleted });
-    return;
-  }
+    return c.json({ deleted });
+  });
 
-  const messageMatch = url.pathname.match(/^\/api\/messages\/([^/]+)$/);
-  if (messageMatch && request.method === 'GET') {
-    const message = store.get(decodeURIComponent(messageMatch[1] || ''));
+  app.get('/api/messages/:id', (c) => {
+    const message = store.get(c.req.param('id'));
     if (!message) {
-      sendJson(response, 404, { error: 'Message not found' });
-      return;
+      return c.json({ error: 'Message not found' }, 404);
     }
 
-    sendJson(response, 200, { message: toMessageDetail(message) });
-    return;
-  }
+    return c.json({ message: toMessageDetail(message) });
+  });
 
-  if (messageMatch && request.method === 'DELETE') {
-    const deleted = store.delete(decodeURIComponent(messageMatch[1] || ''));
-    sendJson(response, deleted ? 200 : 404, { deleted });
-    return;
-  }
+  app.delete('/api/messages/:id', (c) => {
+    const deleted = store.delete(c.req.param('id'));
+    return c.json({ deleted }, deleted ? 200 : 404);
+  });
 
-  await serveStatic(url.pathname, response);
+  app.all('*', (c) => serveStatic(new URL(c.req.url).pathname));
+
+  return app;
 }
 
 function toMessageSummary(message: CapturedMessage): MessageSummary {
@@ -113,45 +121,37 @@ function toMessageDetail(message: CapturedMessage): CapturedMessage {
   };
 }
 
-async function serveStatic(urlPath: string, response: http.ServerResponse): Promise<void> {
+async function serveStatic(urlPath: string): Promise<Response> {
   const relativePath = urlPath === '/' ? 'index.html' : decodeURIComponent(urlPath.slice(1));
   const filePath = path.resolve(WEB_ROOT, relativePath);
 
   if (!filePath.startsWith(`${WEB_ROOT}${path.sep}`) && filePath !== WEB_ROOT) {
-    sendText(response, 403, 'Forbidden');
-    return;
+    return textResponse('Forbidden', 403);
   }
 
   try {
     const stats = await stat(filePath);
     if (!stats.isFile()) {
-      sendText(response, 404, 'Not found');
-      return;
+      return textResponse('Not found', 404);
     }
   } catch {
-    sendText(response, 404, 'Not found');
-    return;
+    return textResponse('Not found', 404);
   }
 
-  response.writeHead(200, {
-    'content-type': contentTypeFor(filePath)
+  return new Response(Readable.toWeb(createReadStream(filePath)), {
+    headers: {
+      'content-type': contentTypeFor(filePath)
+    }
   });
-
-  createReadStream(filePath).pipe(response);
 }
 
-function sendJson(response: http.ServerResponse, statusCode: number, payload: unknown): void {
-  response.writeHead(statusCode, {
-    'content-type': 'application/json; charset=utf-8'
+function textResponse(text: string, statusCode: number): Response {
+  return new Response(text, {
+    status: statusCode,
+    headers: {
+      'content-type': 'text/plain; charset=utf-8'
+    }
   });
-  response.end(JSON.stringify(payload));
-}
-
-function sendText(response: http.ServerResponse, statusCode: number, text: string): void {
-  response.writeHead(statusCode, {
-    'content-type': 'text/plain; charset=utf-8'
-  });
-  response.end(text);
 }
 
 function contentTypeFor(filePath: string): string {
