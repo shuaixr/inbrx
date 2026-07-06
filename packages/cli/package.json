@@ -1,5 +1,5 @@
 {
-  "name": "inbrx",
+  "name": "@inbrx/cli",
   "version": "0.0.1-alpha.1",
   "description": "SMTP capture server and CLI for inbrx.",
   "repository": {

@@ -42,14 +42,14 @@ jobs:
       - name: Verify package contents
         run: |
           npm pack --dry-run -w @inbrx/web
-          npm pack --dry-run -w inbrx
+          npm pack --dry-run -w @inbrx/cli
 
       - name: Publish web package
         run: npm publish -w @inbrx/web --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Publish inbrx package
-        run: npm publish -w inbrx --provenance
+      - name: Publish CLI package
+        run: npm publish -w @inbrx/cli --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

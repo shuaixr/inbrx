@@ -9,9 +9,9 @@
   ],
   "scripts": {
     "build": "npm run build -ws",
-    "start": "npm run build && node ./packages/server/bin/inbrx.js start",
-    "dev": "npm run dev -w inbrx",
-    "dev:server": "npm run dev -w inbrx",
+    "start": "npm run build && node ./packages/cli/bin/inbrx.js start",
+    "dev": "npm run dev -w @inbrx/cli",
+    "dev:server": "npm run dev -w @inbrx/cli",
     "dev:web": "npm run dev -w @inbrx/web",
     "check": "npm run check -ws"
   },
