@@ -1,6 +1,6 @@
 {
-  "name": "inbrx",
-  "version": "0.1.0",
+  "name": "inbrx-workspace",
+  "version": "0.0.1-alpha.1",
   "description": "A local SMTP testing environment for developers.",
   "private": true,
   "type": "module",
@@ -9,9 +9,9 @@
   ],
   "scripts": {
     "build": "npm run build -ws",
-    "start": "npm run build && node ./packages/server/bin/inbrx-smtp.js start",
-    "dev": "npm run dev -w @inbrx/server",
-    "dev:server": "npm run dev -w @inbrx/server",
+    "start": "npm run build && node ./packages/server/bin/inbrx.js start",
+    "dev": "npm run dev -w inbrx",
+    "dev:server": "npm run dev -w inbrx",
     "dev:web": "npm run dev -w @inbrx/web",
     "check": "npm run check -ws"
   },

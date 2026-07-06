@@ -12,7 +12,7 @@ export function createCliProgram(): Command {
   const program = new Command();
 
   program
-    .name('inbrx-smtp')
+    .name('inbrx')
     .description('Start a local SMTP capture server and web UI.')
     .showHelpAfterError()
     .showSuggestionAfterError();
@@ -69,7 +69,7 @@ function normalizeArgv(argv: string[]): string[] {
   }
 
   if (firstArg.startsWith('-') && firstArg !== '-h' && firstArg !== '--help') {
-    return [argv[0] || 'node', argv[1] || 'inbrx-smtp', 'start', ...argv.slice(2)];
+    return [argv[0] || 'node', argv[1] || 'inbrx', 'start', ...argv.slice(2)];
   }
 
   return argv;

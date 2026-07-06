@@ -1,22 +1,33 @@
 {
-  "name": "@inbrx/server",
-  "version": "0.1.0",
+  "name": "inbrx",
+  "version": "0.0.1-alpha.1",
   "description": "SMTP capture server and CLI for inbrx.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shuaixr/inbrx.git"
+  },
   "type": "module",
+  "files": [
+    "bin",
+    "dist"
+  ],
   "bin": {
-    "inbrx-smtp": "./bin/inbrx-smtp.js"
+    "inbrx": "./bin/inbrx.js"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "start": "npm run build && node ./bin/inbrx-smtp.js start",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "npm run build && node ./bin/inbrx.js start",
     "dev": "tsx watch ./src/cli.ts start",
-    "test": "vitest run",
+    "test": "vitest run --exclude \"dist/**\"",
     "test:watch": "vitest",
-    "check": "tsc --noEmit -p tsconfig.json && node --check ./bin/inbrx-smtp.js && npm run test"
+    "check": "tsc --noEmit -p tsconfig.json && node --check ./bin/inbrx.js && npm run test"
   },
   "dependencies": {
     "@hono/node-server": "^2.0.8",
-    "@inbrx/web": "0.1.0",
+    "@inbrx/web": "0.0.1-alpha.1",
     "commander": "^15.0.0",
     "hono": "^4.12.27",
     "mailparser": "^3.9.14",
