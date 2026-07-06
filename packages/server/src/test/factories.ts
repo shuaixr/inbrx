@@ -39,11 +39,11 @@ export function createCapturedMessage(overrides: Partial<CapturedMessage> = {}):
     headers: {
       subject: 'Hello'
     },
-    text: 'Hello from Inbrix',
-    html: '<p>Hello from Inbrix</p>',
+    text: 'Hello from inbrx',
+    html: '<p>Hello from inbrx</p>',
     attachments: [],
     rawSizeBytes: 128,
-    raw: 'Subject: Hello\r\n\r\nHello from Inbrix',
+    raw: 'Subject: Hello\r\n\r\nHello from inbrx',
     smtp: createCapturedSmtpSession(),
     ...overrides
   };

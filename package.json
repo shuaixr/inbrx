@@ -1,5 +1,5 @@
 {
-  "name": "inbrix",
+  "name": "inbrx",
   "version": "0.1.0",
   "description": "A local SMTP testing environment for developers.",
   "private": true,
@@ -9,10 +9,10 @@
   ],
   "scripts": {
     "build": "npm run build -ws",
-    "start": "npm run build && node ./packages/server/bin/inbrix-smtp.js start",
-    "dev": "npm run dev -w @inbrix/server",
-    "dev:server": "npm run dev -w @inbrix/server",
-    "dev:web": "npm run dev -w @inbrix/web",
+    "start": "npm run build && node ./packages/server/bin/inbrx-smtp.js start",
+    "dev": "npm run dev -w @inbrx/server",
+    "dev:server": "npm run dev -w @inbrx/server",
+    "dev:web": "npm run dev -w @inbrx/web",
     "check": "npm run check -ws"
   },
   "engines": {

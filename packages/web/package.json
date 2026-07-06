@@ -1,7 +1,7 @@
 {
-  "name": "@inbrix/web",
+  "name": "@inbrx/web",
   "version": "0.1.0",
-  "description": "Web UI for Inbrix.",
+  "description": "Web UI for inbrx.",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",

@@ -4,8 +4,8 @@ import type { CapturedSmtpSession, MailEnvelope, ManagedServer, MessageStore } f
 
 export function createSmtpServer({ store }: { store: MessageStore }): ManagedServer {
   const server = new SMTPServer({
-    name: 'inbrix-smtp',
-    banner: 'Inbrix ready',
+    name: 'inbrx-smtp',
+    banner: 'inbrx ready',
     authOptional: true,
     disabledCommands: ['AUTH', 'STARTTLS'],
     hidePIPELINING: true,

@@ -1,22 +1,22 @@
 {
-  "name": "@inbrix/server",
+  "name": "@inbrx/server",
   "version": "0.1.0",
-  "description": "SMTP capture server and CLI for Inbrix.",
+  "description": "SMTP capture server and CLI for inbrx.",
   "type": "module",
   "bin": {
-    "inbrix-smtp": "./bin/inbrix-smtp.js"
+    "inbrx-smtp": "./bin/inbrx-smtp.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "start": "npm run build && node ./bin/inbrix-smtp.js start",
+    "start": "npm run build && node ./bin/inbrx-smtp.js start",
     "dev": "tsx watch ./src/cli.ts start",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check": "tsc --noEmit -p tsconfig.json && node --check ./bin/inbrix-smtp.js && npm run test"
+    "check": "tsc --noEmit -p tsconfig.json && node --check ./bin/inbrx-smtp.js && npm run test"
   },
   "dependencies": {
     "@hono/node-server": "^2.0.8",
-    "@inbrix/web": "0.1.0",
+    "@inbrx/web": "0.1.0",
     "commander": "^15.0.0",
     "hono": "^4.12.27",
     "mailparser": "^3.9.14",

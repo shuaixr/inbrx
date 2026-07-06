@@ -100,7 +100,7 @@ function App() {
     <main className="layout">
       <aside className="sidebar">
         <div className="sidebar-header">
-          <h1>Inbrix</h1>
+          <h1>inbrx</h1>
           <button type="button" onClick={() => void loadMessages()}>
             Refresh
           </button>
