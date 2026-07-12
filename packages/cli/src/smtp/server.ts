@@ -1,8 +1,14 @@
 import { SMTPServer, type SMTPServerAddress, type SMTPServerDataStream, type SMTPServerSession } from 'smtp-server';
 import { parseMessage } from '../mail/parser.js';
-import type { CapturedSmtpSession, MailEnvelope, ManagedServer, MessageStore } from '../types.js';
+import type { AttachmentStore, CapturedSmtpSession, MailEnvelope, ManagedServer, MessageStore } from '../types.js';
 
-export function createSmtpServer({ store }: { store: MessageStore }): ManagedServer {
+export function createSmtpServer({
+  store,
+  attachmentStore
+}: {
+  store: MessageStore;
+  attachmentStore: AttachmentStore;
+}): ManagedServer {
   const server = new SMTPServer({
     name: 'inbrx',
     banner: 'inbrx ready',
@@ -17,7 +23,7 @@ export function createSmtpServer({ store }: { store: MessageStore }): ManagedSer
       callback();
     },
     onData(stream, session, callback) {
-      void handleData(stream, session, store)
+      void handleData(stream, session, store, attachmentStore)
         .then((messageId) => callback(null, `OK captured as ${messageId}`))
         .catch((error: unknown) => callback(error instanceof Error ? error : new Error(String(error))));
     }
@@ -45,13 +51,19 @@ export function createSmtpServer({ store }: { store: MessageStore }): ManagedSer
 async function handleData(
   stream: SMTPServerDataStream,
   session: SMTPServerSession,
-  store: MessageStore
+  store: MessageStore,
+  attachmentStore: AttachmentStore
 ): Promise<string> {
   const raw = await readStream(stream);
   const smtp = toCapturedSmtpSession(session);
   const envelope = toMailEnvelope(smtp);
-  const message = await parseMessage({ raw, envelope, smtp });
-  store.add(message);
+  const message = await parseMessage({ raw, envelope, smtp, attachmentStore });
+  try {
+    await store.add(message);
+  } catch (error) {
+    await attachmentStore.deleteForMessage(message.id);
+    throw error;
+  }
 
   return message.id;
 }

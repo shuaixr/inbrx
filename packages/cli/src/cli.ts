@@ -1,6 +1,7 @@
 import { Command } from 'commander';
 import { getDefaultConfig, loadConfig, type ConfigOverrides } from './config.js';
 import { startApp } from './index.js';
+import { getDefaultDataDir } from './store/data-dir.js';
 
 export async function runCli(argv: string[]): Promise<void> {
   const program = createCliProgram();
@@ -25,6 +26,7 @@ export function createCliProgram(): Command {
     .option('--http-host <host>', `HTTP bind host. Default: ${defaults.httpHost}`)
     .option('--http-port <port>', `HTTP port. Default: ${defaults.httpPort}`)
     .option('--max-messages <count>', `Maximum retained messages. Default: ${defaults.maxMessages}`)
+    .option('--storage <mode>', `Storage mode: file or memory. Default: ${defaults.storage}`)
     .addHelpText(
       'after',
       `
@@ -34,7 +36,8 @@ Environment:
   SMTP_TEST_SMTP_PORT
   SMTP_TEST_HTTP_HOST
   SMTP_TEST_HTTP_PORT
-  SMTP_TEST_MAX_MESSAGES`
+  SMTP_TEST_MAX_MESSAGES
+  INBRX_STORAGE`
     )
     .action(async (options: ConfigOverrides) => {
       await startServer(options);
@@ -50,6 +53,7 @@ async function startServer(options: ConfigOverrides): Promise<void> {
   console.log('SMTP test server ready');
   console.log(`SMTP: smtp://${config.smtpHost}:${config.smtpPort}`);
   console.log(`Web UI: http://${config.httpHost}:${config.httpPort}`);
+  console.log(`Storage: ${config.storage}${config.storage === 'file' ? ` (${getDefaultDataDir()})` : ''}`);
   console.log('Press Ctrl+C to stop.');
 
   const shutdown = async (): Promise<void> => {

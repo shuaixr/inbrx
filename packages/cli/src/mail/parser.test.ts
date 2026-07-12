@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { createMemoryAttachmentStore } from '../store/attachment-store.js';
 import { createCapturedSmtpSession } from '../test/factories.js';
 import { parseMessage } from './parser.js';
 
@@ -29,7 +30,8 @@ describe('parseMessage', () => {
         from: null,
         to: []
       },
-      smtp: createCapturedSmtpSession()
+      smtp: createCapturedSmtpSession(),
+      attachmentStore: createMemoryAttachmentStore()
     });
 
     expect(message.id).toEqual(expect.any(String));
@@ -52,7 +54,8 @@ describe('parseMessage', () => {
         from: 'envelope-sender@example.com',
         to: ['envelope-recipient@example.com']
       },
-      smtp: createCapturedSmtpSession()
+      smtp: createCapturedSmtpSession(),
+      attachmentStore: createMemoryAttachmentStore()
     });
 
     expect(message.from).toBe('envelope-sender@example.com');
@@ -80,22 +83,29 @@ describe('parseMessage', () => {
       '--mixed-boundary--'
     ].join('\r\n');
 
+    const attachmentStore = createMemoryAttachmentStore();
     const message = await parseMessage({
       raw,
       envelope: {
         from: null,
         to: []
       },
-      smtp: createCapturedSmtpSession()
+      smtp: createCapturedSmtpSession(),
+      attachmentStore
     });
 
     expect(message.attachments).toEqual([
       {
+        id: expect.any(String),
         filename: 'note.txt',
         contentType: 'text/plain',
         sizeBytes: Buffer.byteLength('attached text'),
+        storageKey: `${message.id}/${message.attachments[0]?.id}`,
         contentId: '<note-1>'
       }
     ]);
+    await expect(attachmentStore.get(message.id, message.attachments[0]?.id || '')).resolves.toMatchObject({
+      content: Buffer.from('attached text')
+    });
   });
 });

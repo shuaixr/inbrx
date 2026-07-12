@@ -11,13 +11,20 @@ type MessageSummary = {
   rawSizeBytes: number;
 };
 
+type MessageAttachment = {
+  id: string;
+  filename: string | null;
+  contentType: string;
+  sizeBytes: number;
+};
+
 type MessageDetail = MessageSummary & {
   cc: string[];
   bcc: string[];
   headers: Record<string, string | string[]>;
   text: string | null;
   html: string | null;
-  attachments: unknown[];
+  attachments: MessageAttachment[];
   raw: string;
 };
 
@@ -143,6 +150,24 @@ function App() {
               <p className="meta">
                 {selectedMessage.from || 'unknown'} -&gt; {selectedMessage.to.join(', ') || 'unknown'}
               </p>
+              {selectedMessage.attachments.length > 0 ? (
+                <div className="attachments" aria-label="Attachments">
+                  {selectedMessage.attachments.map((attachment) => (
+                    <a
+                      className="attachment-link"
+                      href={`/api/messages/${encodeURIComponent(selectedMessage.id)}/attachments/${encodeURIComponent(
+                        attachment.id
+                      )}`}
+                      key={attachment.id}
+                    >
+                      <span>{attachment.filename || 'attachment'}</span>
+                      <small>
+                        {attachment.contentType} · {formatBytes(attachment.sizeBytes)}
+                      </small>
+                    </a>
+                  ))}
+                </div>
+              ) : null}
             </header>
 
             <nav className="tabs">
@@ -177,3 +202,15 @@ createRoot(document.getElementById('root') as HTMLElement).render(
     <App />
   </React.StrictMode>
 );
+
+function formatBytes(value: number): string {
+  if (value < 1024) {
+    return `${value} B`;
+  }
+
+  if (value < 1024 * 1024) {
+    return `${(value / 1024).toFixed(1)} KB`;
+  }
+
+  return `${(value / 1024 / 1024).toFixed(1)} MB`;
+}

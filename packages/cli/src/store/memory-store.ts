@@ -1,11 +1,17 @@
 import type { CapturedMessage, MessageStore } from '../types.js';
 
-export function createMemoryStore({ maxMessages }: { maxMessages: number }): MessageStore {
+export function createMemoryStore({
+  maxMessages,
+  onDelete
+}: {
+  maxMessages: number;
+  onDelete?: (messageId: string) => Promise<void>;
+}): MessageStore {
   const messages = new Map<string, CapturedMessage>();
   const order: string[] = [];
 
   return {
-    add(message) {
+    async add(message) {
       messages.set(message.id, message);
       order.unshift(message.id);
 
@@ -13,33 +19,39 @@ export function createMemoryStore({ maxMessages }: { maxMessages: number }): Mes
         const removedId = order.pop();
         if (removedId) {
           messages.delete(removedId);
+          await onDelete?.(removedId);
         }
       }
 
       return message;
     },
 
-    list() {
+    async list() {
       return order.map((id) => messages.get(id)).filter((message): message is CapturedMessage => Boolean(message));
     },
 
-    get(id) {
+    async get(id) {
       return messages.get(id) || null;
     },
 
-    delete(id) {
+    async delete(id) {
       const existed = messages.delete(id);
       const index = order.indexOf(id);
       if (index !== -1) {
         order.splice(index, 1);
       }
+      if (existed) {
+        await onDelete?.(id);
+      }
       return existed;
     },
 
-    clear() {
+    async clear() {
       const count = messages.size;
+      const ids = [...messages.keys()];
       messages.clear();
       order.length = 0;
+      await Promise.all(ids.map((id) => onDelete?.(id)));
       return count;
     }
   };

@@ -6,7 +6,8 @@ const ENV_KEYS = [
   'SMTP_TEST_SMTP_PORT',
   'SMTP_TEST_HTTP_HOST',
   'SMTP_TEST_HTTP_PORT',
-  'SMTP_TEST_MAX_MESSAGES'
+  'SMTP_TEST_MAX_MESSAGES',
+  'INBRX_STORAGE'
 ] as const;
 
 describe('loadConfig', () => {
@@ -26,13 +27,15 @@ describe('loadConfig', () => {
     process.env.SMTP_TEST_HTTP_HOST = 'localhost';
     process.env.SMTP_TEST_HTTP_PORT = '3001';
     process.env.SMTP_TEST_MAX_MESSAGES = '25';
+    process.env.INBRX_STORAGE = 'memory';
 
     expect(loadConfig()).toEqual({
       smtpHost: '0.0.0.0',
       smtpPort: 2526,
       httpHost: 'localhost',
       httpPort: 3001,
-      maxMessages: 25
+      maxMessages: 25,
+      storage: 'memory'
     });
   });
 
@@ -52,5 +55,9 @@ describe('loadConfig', () => {
 
   it('rejects non-positive max message counts', () => {
     expect(() => loadConfig({ maxMessages: 0 })).toThrow('Max messages must be a positive integer.');
+  });
+
+  it('rejects invalid storage modes', () => {
+    expect(() => loadConfig({ storage: 'sqlite' })).toThrow('Storage must be either "file" or "memory".');
   });
 });

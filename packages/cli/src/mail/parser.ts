@@ -1,20 +1,43 @@
 import { randomUUID } from 'node:crypto';
 import { simpleParser, type AddressObject, type HeaderValue as ParsedHeaderValue } from 'mailparser';
-import type { CapturedMessage, CapturedSmtpSession, HeaderValue, MailEnvelope } from '../types.js';
+import type {
+  AttachmentStore,
+  CapturedAttachment,
+  CapturedMessage,
+  CapturedSmtpSession,
+  HeaderValue,
+  MailEnvelope
+} from '../types.js';
 
 export async function parseMessage({
   raw,
   envelope,
-  smtp
+  smtp,
+  attachmentStore
 }: {
   raw: string;
   envelope: MailEnvelope;
   smtp: CapturedSmtpSession;
+  attachmentStore: AttachmentStore;
 }): Promise<CapturedMessage> {
   const parsed = await simpleParser(Buffer.from(raw));
+  const id = randomUUID();
+  const attachments: CapturedAttachment[] = [];
+
+  for (const attachment of parsed.attachments) {
+    attachments.push(
+      await attachmentStore.save({
+        messageId: id,
+        filename: attachment.filename || null,
+        contentType: attachment.contentType,
+        contentId: attachment.contentId,
+        content: attachment.content
+      })
+    );
+  }
 
   return {
-    id: randomUUID(),
+    id,
     receivedAt: new Date().toISOString(),
     from: envelope.from || firstAddress(parsed.from),
     to: envelope.to.length > 0 ? envelope.to : addressList(parsed.to),
@@ -24,12 +47,7 @@ export async function parseMessage({
     headers: headersToRecord(parsed.headers),
     text: parsed.text || null,
     html: typeof parsed.html === 'string' ? parsed.html : null,
-    attachments: parsed.attachments.map((attachment) => ({
-      filename: attachment.filename || null,
-      contentType: attachment.contentType,
-      sizeBytes: attachment.size,
-      contentId: attachment.contentId
-    })),
+    attachments,
     rawSizeBytes: Buffer.byteLength(raw),
     raw,
     smtp

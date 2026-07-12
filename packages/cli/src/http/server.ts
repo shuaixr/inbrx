@@ -5,15 +5,21 @@ import { Readable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
 import { serve, type ServerType } from '@hono/node-server';
 import { Hono } from 'hono';
-import type { CapturedMessage, ManagedServer, MessageStore } from '../types.js';
+import type { AttachmentStore, CapturedAttachment, CapturedMessage, ManagedServer, MessageStore } from '../types.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const WEB_ROOT = path.resolve(__dirname, '../../..', 'web/dist');
 
 type MessageSummary = Pick<CapturedMessage, 'id' | 'receivedAt' | 'from' | 'to' | 'subject' | 'rawSizeBytes'>;
 
-export function createHttpServer({ store }: { store: MessageStore }): ManagedServer {
-  const app = createHttpApp({ store });
+export function createHttpServer({
+  store,
+  attachmentStore
+}: {
+  store: MessageStore;
+  attachmentStore: AttachmentStore;
+}): ManagedServer {
+  const app = createHttpApp({ store, attachmentStore });
   let server: ServerType | null = null;
 
   return {
@@ -57,7 +63,13 @@ export function createHttpServer({ store }: { store: MessageStore }): ManagedSer
   };
 }
 
-export function createHttpApp({ store }: { store: MessageStore }): Hono {
+export function createHttpApp({
+  store,
+  attachmentStore
+}: {
+  store: MessageStore;
+  attachmentStore: AttachmentStore;
+}): Hono {
   const app = new Hono();
 
   app.onError((error, c) => {
@@ -67,19 +79,19 @@ export function createHttpApp({ store }: { store: MessageStore }): Hono {
 
   app.get('/api/health', (c) => c.json({ status: 'ok' }));
 
-  app.get('/api/messages', (c) =>
+  app.get('/api/messages', async (c) =>
     c.json({
-      messages: store.list().map(toMessageSummary)
+      messages: (await store.list()).map(toMessageSummary)
     })
   );
 
-  app.delete('/api/messages', (c) => {
-    const deleted = store.clear();
+  app.delete('/api/messages', async (c) => {
+    const deleted = await store.clear();
     return c.json({ deleted });
   });
 
-  app.get('/api/messages/:id', (c) => {
-    const message = store.get(c.req.param('id'));
+  app.get('/api/messages/:id', async (c) => {
+    const message = await store.get(c.req.param('id'));
     if (!message) {
       return c.json({ error: 'Message not found' }, 404);
     }
@@ -87,8 +99,31 @@ export function createHttpApp({ store }: { store: MessageStore }): Hono {
     return c.json({ message: toMessageDetail(message) });
   });
 
-  app.delete('/api/messages/:id', (c) => {
-    const deleted = store.delete(c.req.param('id'));
+  app.get('/api/messages/:id/attachments/:attachmentId', async (c) => {
+    const messageId = c.req.param('id');
+    const attachmentId = c.req.param('attachmentId');
+    const message = await store.get(messageId);
+    if (!message) {
+      return c.json({ error: 'Message not found' }, 404);
+    }
+
+    const attachment = message.attachments.find((item) => item.id === attachmentId);
+    if (!attachment) {
+      return c.json({ error: 'Attachment not found' }, 404);
+    }
+
+    const storedAttachment = await attachmentStore.get(messageId, attachmentId);
+    if (!storedAttachment) {
+      return c.json({ error: 'Attachment not found' }, 404);
+    }
+
+    return new Response(storedAttachment.content, {
+      headers: attachmentHeaders(attachment)
+    });
+  });
+
+  app.delete('/api/messages/:id', async (c) => {
+    const deleted = await store.delete(c.req.param('id'));
     return c.json({ deleted }, deleted ? 200 : 404);
   });
 
@@ -169,4 +204,17 @@ function contentTypeFor(filePath: string): string {
   }
 
   return 'application/octet-stream';
+}
+
+function attachmentHeaders(attachment: CapturedAttachment): Headers {
+  const headers = new Headers();
+  headers.set('content-type', attachment.contentType);
+  headers.set('content-length', String(attachment.sizeBytes));
+  headers.set('content-disposition', contentDispositionFor(attachment.filename));
+  return headers;
+}
+
+function contentDispositionFor(filename: string | null): string {
+  const safeFilename = (filename || 'attachment').replace(/[^\w.!#$&+^`{}~-]+/g, '_');
+  return `attachment; filename="${safeFilename}"`;
 }

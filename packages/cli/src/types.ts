@@ -4,12 +4,17 @@ export type AppConfig = {
   httpHost: string;
   httpPort: number;
   maxMessages: number;
+  storage: StorageMode;
 };
 
+export type StorageMode = 'file' | 'memory';
+
 export type CapturedAttachment = {
+  id: string;
   filename: string | null;
   contentType: string;
   sizeBytes: number;
+  storageKey: string;
   contentId?: string;
 };
 
@@ -58,11 +63,28 @@ export type MailEnvelope = {
 };
 
 export type MessageStore = {
-  add(message: CapturedMessage): CapturedMessage;
-  list(): CapturedMessage[];
-  get(id: string): CapturedMessage | null;
-  delete(id: string): boolean;
-  clear(): number;
+  add(message: CapturedMessage): Promise<CapturedMessage>;
+  list(): Promise<CapturedMessage[]>;
+  get(id: string): Promise<CapturedMessage | null>;
+  delete(id: string): Promise<boolean>;
+  clear(): Promise<number>;
+};
+
+export type StoredAttachment = CapturedAttachment & {
+  content: Buffer;
+};
+
+export type AttachmentStore = {
+  save(input: {
+    messageId: string;
+    filename: string | null;
+    contentType: string;
+    contentId?: string;
+    content: Buffer;
+  }): Promise<CapturedAttachment>;
+  get(messageId: string, attachmentId: string): Promise<StoredAttachment | null>;
+  deleteForMessage(messageId: string): Promise<void>;
+  clear(): Promise<void>;
 };
 
 export type ManagedServer = {

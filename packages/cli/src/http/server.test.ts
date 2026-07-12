@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
+import { createMemoryAttachmentStore } from '../store/attachment-store.js';
 import { createMemoryStore } from '../store/memory-store.js';
 import { createCapturedMessage } from '../test/factories.js';
 import { createHttpApp } from './server.js';
 
 describe('createHttpApp', () => {
   it('returns health status', async () => {
-    const app = createHttpApp({ store: createMemoryStore({ maxMessages: 10 }) });
+    const app = createTestApp();
 
     const response = await app.request('/api/health');
 
@@ -15,8 +16,8 @@ describe('createHttpApp', () => {
 
   it('lists message summaries without body fields', async () => {
     const store = createMemoryStore({ maxMessages: 10 });
-    store.add(createCapturedMessage({ id: 'message-1', subject: 'First' }));
-    const app = createHttpApp({ store });
+    await store.add(createCapturedMessage({ id: 'message-1', subject: 'First' }));
+    const app = createTestApp(store);
 
     const response = await app.request('/api/messages');
     const body = (await response.json()) as { messages: Array<Record<string, unknown>> };
@@ -40,8 +41,8 @@ describe('createHttpApp', () => {
   it('returns message details', async () => {
     const store = createMemoryStore({ maxMessages: 10 });
     const message = createCapturedMessage({ id: 'message-1' });
-    store.add(message);
-    const app = createHttpApp({ store });
+    await store.add(message);
+    const app = createTestApp(store);
 
     const response = await app.request('/api/messages/message-1');
 
@@ -50,7 +51,7 @@ describe('createHttpApp', () => {
   });
 
   it('returns 404 for a missing message', async () => {
-    const app = createHttpApp({ store: createMemoryStore({ maxMessages: 10 }) });
+    const app = createTestApp();
 
     const response = await app.request('/api/messages/missing');
 
@@ -60,31 +61,51 @@ describe('createHttpApp', () => {
 
   it('deletes one message', async () => {
     const store = createMemoryStore({ maxMessages: 10 });
-    store.add(createCapturedMessage({ id: 'message-1' }));
-    const app = createHttpApp({ store });
+    await store.add(createCapturedMessage({ id: 'message-1' }));
+    const app = createTestApp(store);
 
     const response = await app.request('/api/messages/message-1', { method: 'DELETE' });
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ deleted: true });
-    expect(store.get('message-1')).toBeNull();
+    await expect(store.get('message-1')).resolves.toBeNull();
   });
 
   it('clears all messages', async () => {
     const store = createMemoryStore({ maxMessages: 10 });
-    store.add(createCapturedMessage({ id: 'message-1' }));
-    store.add(createCapturedMessage({ id: 'message-2' }));
-    const app = createHttpApp({ store });
+    await store.add(createCapturedMessage({ id: 'message-1' }));
+    await store.add(createCapturedMessage({ id: 'message-2' }));
+    const app = createTestApp(store);
 
     const response = await app.request('/api/messages', { method: 'DELETE' });
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ deleted: 2 });
-    expect(store.list()).toEqual([]);
+    await expect(store.list()).resolves.toEqual([]);
+  });
+
+  it('downloads stored attachments', async () => {
+    const attachmentStore = createMemoryAttachmentStore();
+    const attachment = await attachmentStore.save({
+      messageId: 'message-1',
+      filename: 'note.txt',
+      contentType: 'text/plain',
+      content: Buffer.from('attached text')
+    });
+    const store = createMemoryStore({ maxMessages: 10 });
+    await store.add(createCapturedMessage({ id: 'message-1', attachments: [attachment] }));
+    const app = createHttpApp({ store, attachmentStore });
+
+    const response = await app.request(`/api/messages/message-1/attachments/${attachment.id}`);
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toBe('text/plain');
+    expect(response.headers.get('content-disposition')).toBe('attachment; filename="note.txt"');
+    await expect(response.text()).resolves.toBe('attached text');
   });
 
   it('rejects static path traversal outside the web root', async () => {
-    const app = createHttpApp({ store: createMemoryStore({ maxMessages: 10 }) });
+    const app = createTestApp();
 
     const response = await app.request('/..%2Fpackage.json');
 
@@ -92,3 +113,7 @@ describe('createHttpApp', () => {
     await expect(response.text()).resolves.toBe('Forbidden');
   });
 });
+
+function createTestApp(store = createMemoryStore({ maxMessages: 10 })) {
+  return createHttpApp({ store, attachmentStore: createMemoryAttachmentStore() });
+}

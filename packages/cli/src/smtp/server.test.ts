@@ -1,6 +1,7 @@
 import net from 'node:net';
 import nodemailer from 'nodemailer';
 import { afterEach, describe, expect, it } from 'vitest';
+import { createMemoryAttachmentStore } from '../store/attachment-store.js';
 import { createMemoryStore } from '../store/memory-store.js';
 import type { ManagedServer } from '../types.js';
 import { createSmtpServer } from './server.js';
@@ -15,8 +16,9 @@ describe('createSmtpServer', () => {
 
   it('captures mail sent through SMTP', async () => {
     const store = createMemoryStore({ maxMessages: 10 });
+    const attachmentStore = createMemoryAttachmentStore();
     const port = await getAvailablePort();
-    smtpServer = createSmtpServer({ store });
+    smtpServer = createSmtpServer({ store, attachmentStore });
     await smtpServer.listen(port, '127.0.0.1');
 
     const transport = nodemailer.createTransport({
@@ -40,7 +42,7 @@ describe('createSmtpServer', () => {
       ]
     });
 
-    const [message] = store.list();
+    const [message] = await store.list();
     expect(info.response).toContain('OK captured as');
     expect(message).toBeDefined();
     expect(message?.from).toBe('sender@example.com');
@@ -50,11 +52,16 @@ describe('createSmtpServer', () => {
     expect(message?.html).toContain('<strong>Captured HTML body</strong>');
     expect(message?.attachments).toEqual([
       {
+        id: expect.any(String),
         filename: 'note.txt',
         contentType: 'text/plain',
-        sizeBytes: Buffer.byteLength('attached text')
+        sizeBytes: Buffer.byteLength('attached text'),
+        storageKey: `${message?.id}/${message?.attachments[0]?.id}`
       }
     ]);
+    await expect(attachmentStore.get(message?.id || '', message?.attachments[0]?.id || '')).resolves.toMatchObject({
+      content: Buffer.from('attached text')
+    });
     expect(message?.rawSizeBytes).toBeGreaterThan(0);
     expect(message?.smtp.envelope.mailFrom?.address).toBe('sender@example.com');
     expect(message?.smtp.envelope.rcptTo.map((recipient) => recipient.address)).toEqual([
