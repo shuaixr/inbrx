@@ -1,6 +1,9 @@
 export type AppConfig = {
   smtpHost: string;
   smtpPort: number;
+  smtpStartTls: boolean;
+  smtpTlsKeyPath: string | null;
+  smtpTlsCertPath: string | null;
   httpHost: string;
   httpPort: number;
   maxMessages: number;

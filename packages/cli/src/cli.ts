@@ -23,6 +23,9 @@ export function createCliProgram(): Command {
     .description('Start the SMTP server and HTTP API/UI.')
     .option('--smtp-host <host>', `SMTP bind host. Default: ${defaults.smtpHost}`)
     .option('--smtp-port <port>', `SMTP port. Default: ${defaults.smtpPort}`)
+    .option('--smtp-starttls', 'Advertise and support STARTTLS. Generates a temporary self-signed certificate unless TLS paths are provided.')
+    .option('--smtp-tls-key <path>', 'TLS private key path for STARTTLS. Enables STARTTLS when paired with --smtp-tls-cert.')
+    .option('--smtp-tls-cert <path>', 'TLS certificate path for STARTTLS. Enables STARTTLS when paired with --smtp-tls-key.')
     .option('--http-host <host>', `HTTP bind host. Default: ${defaults.httpHost}`)
     .option('--http-port <port>', `HTTP port. Default: ${defaults.httpPort}`)
     .option('--max-messages <count>', `Maximum retained messages. Default: ${defaults.maxMessages}`)
@@ -34,6 +37,9 @@ export function createCliProgram(): Command {
 Environment:
   SMTP_TEST_SMTP_HOST
   SMTP_TEST_SMTP_PORT
+  INBRX_SMTP_STARTTLS
+  INBRX_SMTP_TLS_KEY
+  INBRX_SMTP_TLS_CERT
   SMTP_TEST_HTTP_HOST
   SMTP_TEST_HTTP_PORT
   SMTP_TEST_MAX_MESSAGES
@@ -52,6 +58,7 @@ async function startServer(options: ConfigOverrides): Promise<void> {
 
   console.log('SMTP test server ready');
   console.log(`SMTP: smtp://${config.smtpHost}:${config.smtpPort}`);
+  console.log(`SMTP STARTTLS: ${config.smtpStartTls ? 'enabled' : 'disabled'}`);
   console.log(`Web UI: http://${config.httpHost}:${config.httpPort}`);
   console.log(`Storage: ${config.storage}${config.storage === 'file' ? ` (${getDefaultDataDir()})` : ''}`);
   console.log('Press Ctrl+C to stop.');

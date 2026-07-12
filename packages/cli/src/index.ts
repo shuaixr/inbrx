@@ -8,7 +8,13 @@ import type { AppConfig, AttachmentStore, MessageStore } from './types.js';
 
 export async function startApp(config: AppConfig): Promise<{ store: MessageStore; stop(): Promise<void> }> {
   const { store, attachmentStore } = createStores(config);
-  const smtpServer = createSmtpServer({ store, attachmentStore });
+  const smtpServer = await createSmtpServer({
+    store,
+    attachmentStore,
+    startTls: config.smtpStartTls,
+    tlsKeyPath: config.smtpTlsKeyPath,
+    tlsCertPath: config.smtpTlsCertPath
+  });
   const httpServer = createHttpServer({ store, attachmentStore });
 
   await Promise.all([

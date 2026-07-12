@@ -18,7 +18,7 @@ describe('createSmtpServer', () => {
     const store = createMemoryStore({ maxMessages: 10 });
     const attachmentStore = createMemoryAttachmentStore();
     const port = await getAvailablePort();
-    smtpServer = createSmtpServer({ store, attachmentStore });
+    smtpServer = await createSmtpServer({ store, attachmentStore });
     await smtpServer.listen(port, '127.0.0.1');
 
     const transport = nodemailer.createTransport({
@@ -74,7 +74,7 @@ describe('createSmtpServer', () => {
     const store = createMemoryStore({ maxMessages: 10 });
     const attachmentStore = createMemoryAttachmentStore();
     const port = await getAvailablePort();
-    smtpServer = createSmtpServer({ store, attachmentStore });
+    smtpServer = await createSmtpServer({ store, attachmentStore });
     await smtpServer.listen(port, '127.0.0.1');
 
     const transport = nodemailer.createTransport({
@@ -101,6 +101,41 @@ describe('createSmtpServer', () => {
     expect(message?.to).toEqual(['recipient@example.com']);
     expect(message?.subject).toBe('SMTP auth');
     expect(message?.text).toContain('Captured with auth');
+  });
+
+  it('supports STARTTLS with a generated self-signed certificate', async () => {
+    const store = createMemoryStore({ maxMessages: 10 });
+    const attachmentStore = createMemoryAttachmentStore();
+    const port = await getAvailablePort();
+    smtpServer = await createSmtpServer({ store, attachmentStore, startTls: true });
+    await smtpServer.listen(port, '127.0.0.1');
+
+    const transport = nodemailer.createTransport({
+      host: '127.0.0.1',
+      port,
+      secure: false,
+      requireTLS: true,
+      auth: {
+        user: 'sender@example.com',
+        pass: 'your_password'
+      },
+      tls: {
+        rejectUnauthorized: false
+      }
+    });
+
+    const info = await transport.sendMail({
+      from: 'sender@example.com',
+      to: 'recipient@example.com',
+      subject: 'SMTP STARTTLS',
+      text: 'Captured with STARTTLS'
+    });
+
+    const [message] = await store.list();
+    expect(info.response).toContain('OK captured as');
+    expect(message?.smtp.secure).toBe(true);
+    expect(message?.subject).toBe('SMTP STARTTLS');
+    expect(message?.text).toContain('Captured with STARTTLS');
   });
 });
 

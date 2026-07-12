@@ -1,20 +1,35 @@
+import { readFile } from 'node:fs/promises';
 import { SMTPServer, type SMTPServerAddress, type SMTPServerDataStream, type SMTPServerSession } from 'smtp-server';
+import { generate } from 'selfsigned';
 import { parseMessage } from '../mail/parser.js';
 import type { AttachmentStore, CapturedSmtpSession, MailEnvelope, ManagedServer, MessageStore } from '../types.js';
 
-export function createSmtpServer({
+type SmtpTlsConfig = {
+  key: string | Buffer;
+  cert: string | Buffer;
+};
+
+export async function createSmtpServer({
   store,
-  attachmentStore
+  attachmentStore,
+  startTls = false,
+  tlsKeyPath = null,
+  tlsCertPath = null
 }: {
   store: MessageStore;
   attachmentStore: AttachmentStore;
-}): ManagedServer {
+  startTls?: boolean;
+  tlsKeyPath?: string | null;
+  tlsCertPath?: string | null;
+}): Promise<ManagedServer> {
+  const tlsConfig = startTls ? await createTlsConfig({ keyPath: tlsKeyPath, certPath: tlsCertPath }) : null;
   const server = new SMTPServer({
     name: 'inbrx',
     banner: 'inbrx ready',
+    ...(tlsConfig ?? {}),
     authOptional: true,
     allowInsecureAuth: true,
-    disabledCommands: ['STARTTLS'],
+    disabledCommands: startTls ? [] : ['STARTTLS'],
     hidePIPELINING: true,
     logger: false,
     onAuth(auth, _session, callback) {
@@ -49,6 +64,52 @@ export function createSmtpServer({
         server.close(resolve);
       });
     }
+  };
+}
+
+async function createTlsConfig({
+  keyPath,
+  certPath
+}: {
+  keyPath: string | null;
+  certPath: string | null;
+}): Promise<SmtpTlsConfig> {
+  if (keyPath || certPath) {
+    if (!keyPath || !certPath) {
+      throw new Error('SMTP TLS key and certificate paths must be provided together.');
+    }
+
+    const [key, cert] = await Promise.all([readFile(keyPath), readFile(certPath)]);
+    return { key, cert };
+  }
+
+  const pems = await generate([{ name: 'commonName', value: 'localhost' }], {
+    keySize: 2048,
+    algorithm: 'sha256',
+    extensions: [
+      {
+        name: 'basicConstraints',
+        cA: false
+      },
+      {
+        name: 'keyUsage',
+        digitalSignature: true,
+        keyEncipherment: true
+      },
+      {
+        name: 'subjectAltName',
+        altNames: [
+          { type: 2, value: 'localhost' },
+          { type: 7, ip: '127.0.0.1' },
+          { type: 7, ip: '::1' }
+        ]
+      }
+    ]
+  });
+
+  return {
+    key: pems.private,
+    cert: pems.cert
   };
 }
 
