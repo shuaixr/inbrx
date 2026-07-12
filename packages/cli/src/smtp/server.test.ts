@@ -69,6 +69,39 @@ describe('createSmtpServer', () => {
       'second@example.com'
     ]);
   });
+
+  it('accepts optional SMTP auth without validating credentials', async () => {
+    const store = createMemoryStore({ maxMessages: 10 });
+    const attachmentStore = createMemoryAttachmentStore();
+    const port = await getAvailablePort();
+    smtpServer = createSmtpServer({ store, attachmentStore });
+    await smtpServer.listen(port, '127.0.0.1');
+
+    const transport = nodemailer.createTransport({
+      host: '127.0.0.1',
+      port,
+      secure: false,
+      ignoreTLS: true,
+      auth: {
+        user: 'sender@example.com',
+        pass: 'your_password'
+      }
+    });
+
+    const info = await transport.sendMail({
+      from: 'sender@example.com',
+      to: 'recipient@example.com',
+      subject: 'SMTP auth',
+      text: 'Captured with auth'
+    });
+
+    const [message] = await store.list();
+    expect(info.response).toContain('OK captured as');
+    expect(message?.from).toBe('sender@example.com');
+    expect(message?.to).toEqual(['recipient@example.com']);
+    expect(message?.subject).toBe('SMTP auth');
+    expect(message?.text).toContain('Captured with auth');
+  });
 });
 
 function getAvailablePort(): Promise<number> {

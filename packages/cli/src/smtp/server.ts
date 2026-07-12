@@ -13,9 +13,13 @@ export function createSmtpServer({
     name: 'inbrx',
     banner: 'inbrx ready',
     authOptional: true,
-    disabledCommands: ['AUTH', 'STARTTLS'],
+    allowInsecureAuth: true,
+    disabledCommands: ['STARTTLS'],
     hidePIPELINING: true,
     logger: false,
+    onAuth(auth, _session, callback) {
+      callback(null, { user: auth.username || 'anonymous' });
+    },
     onMailFrom(_address, _session, callback) {
       callback();
     },
