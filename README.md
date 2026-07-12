@@ -1,5 +1,10 @@
 # inbrx
 
+[![CI](https://github.com/shuaixr/inbrx/actions/workflows/ci.yml/badge.svg)](https://github.com/shuaixr/inbrx/actions/workflows/ci.yml)
+[![Coverage](https://codecov.io/gh/shuaixr/inbrx/branch/master/graph/badge.svg)](https://codecov.io/gh/shuaixr/inbrx)
+[![npm @inbrx/cli](https://img.shields.io/npm/v/%40inbrx%2Fcli?label=%40inbrx%2Fcli)](https://www.npmjs.com/package/@inbrx/cli)
+[![npm @inbrx/web](https://img.shields.io/npm/v/%40inbrx%2Fweb?label=%40inbrx%2Fweb)](https://www.npmjs.com/package/@inbrx/web)
+
 A local SMTP testing environment for developers. Start it, point your application at the local SMTP endpoint, and inspect captured emails in the browser.
 
 ## Quick Start

@@ -10,6 +10,10 @@ on:
       - master
       - dev
 
+permissions:
+  contents: read
+  id-token: write
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -34,6 +38,18 @@ jobs:
 
       - name: Run checks
         run: npm run check
+
+      - name: Generate coverage
+        run: npm run coverage
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v7
+        with:
+          files: ./packages/cli/coverage/lcov.info
+          flags: cli
+          name: inbrx-cli
+          use_oidc: true
+          fail_ci_if_error: true
 
       - name: Build packages
         run: npm run build
