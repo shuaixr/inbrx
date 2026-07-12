@@ -104,6 +104,50 @@ describe('createHttpApp', () => {
     await expect(response.text()).resolves.toBe('attached text');
   });
 
+  it('returns 404 when downloading an attachment for a missing message', async () => {
+    const app = createTestApp();
+
+    const response = await app.request('/api/messages/missing/attachments/attachment-1');
+
+    expect(response.status).toBe(404);
+    await expect(response.json()).resolves.toEqual({ error: 'Message not found' });
+  });
+
+  it('returns 404 when a message does not reference the requested attachment', async () => {
+    const store = createMemoryStore({ maxMessages: 10 });
+    await store.add(createCapturedMessage({ id: 'message-1' }));
+    const app = createTestApp(store);
+
+    const response = await app.request('/api/messages/message-1/attachments/missing');
+
+    expect(response.status).toBe(404);
+    await expect(response.json()).resolves.toEqual({ error: 'Attachment not found' });
+  });
+
+  it('returns 404 when referenced attachment content is missing from storage', async () => {
+    const store = createMemoryStore({ maxMessages: 10 });
+    await store.add(
+      createCapturedMessage({
+        id: 'message-1',
+        attachments: [
+          {
+            id: 'attachment-1',
+            filename: 'missing.txt',
+            contentType: 'text/plain',
+            sizeBytes: 12,
+            storageKey: 'message-1/attachment-1'
+          }
+        ]
+      })
+    );
+    const app = createTestApp(store);
+
+    const response = await app.request('/api/messages/message-1/attachments/attachment-1');
+
+    expect(response.status).toBe(404);
+    await expect(response.json()).resolves.toEqual({ error: 'Attachment not found' });
+  });
+
   it('rejects static path traversal outside the web root', async () => {
     const app = createTestApp();
 
