@@ -35,36 +35,73 @@ function App() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedMessage, setSelectedMessage] = useState<MessageDetail | null>(null);
   const [activeTab, setActiveTab] = useState<ActiveTab>('body');
+  const [isClearing, setIsClearing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  async function loadMessages() {
+  async function fetchMessages() {
     const response = await fetch('/api/messages');
+    if (!response.ok) {
+      throw new Error(`Failed to load messages (${response.status})`);
+    }
+
     const data = (await response.json()) as { messages: MessageSummary[] };
-    setMessages(data.messages);
+    return data.messages;
+  }
 
-    if (!selectedId && data.messages[0]) {
-      setSelectedId(data.messages[0].id);
-    }
+  async function loadMessages({ autoSelect = true }: { autoSelect?: boolean } = {}) {
+    const nextMessages = await fetchMessages();
+    setError(null);
+    setMessages(nextMessages);
 
-    if (selectedId && !data.messages.some((message) => message.id === selectedId)) {
-      setSelectedId(data.messages[0]?.id ?? null);
-    }
+    setSelectedId((currentId) => {
+      if (currentId && nextMessages.some((message) => message.id === currentId)) {
+        return currentId;
+      }
+
+      if (autoSelect) {
+        return nextMessages[0]?.id ?? null;
+      }
+
+      return null;
+    });
   }
 
   async function clearMessages() {
-    await fetch('/api/messages', { method: 'DELETE' });
-    setSelectedId(null);
-    setSelectedMessage(null);
-    await loadMessages();
+    if (isClearing) {
+      return;
+    }
+
+    setIsClearing(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/messages', { method: 'DELETE' });
+      if (!response.ok) {
+        throw new Error(`Failed to clear messages (${response.status})`);
+      }
+
+      setSelectedId(null);
+      setSelectedMessage(null);
+      await loadMessages({ autoSelect: false });
+    } catch (clearError) {
+      setError(clearError instanceof Error ? clearError.message : 'Failed to clear messages');
+    } finally {
+      setIsClearing(false);
+    }
   }
 
   useEffect(() => {
-    void loadMessages();
+    void loadMessages().catch((loadError) => {
+      setError(loadError instanceof Error ? loadError.message : 'Failed to load messages');
+    });
     const interval = window.setInterval(() => {
-      void loadMessages();
+      void loadMessages().catch((loadError) => {
+        setError(loadError instanceof Error ? loadError.message : 'Failed to load messages');
+      });
     }, 3000);
 
     return () => window.clearInterval(interval);
-  }, [selectedId]);
+  }, []);
 
   useEffect(() => {
     if (!selectedId) {
@@ -112,9 +149,10 @@ function App() {
             Refresh
           </button>
         </div>
-        <button className="danger" type="button" onClick={() => void clearMessages()}>
-          Clear
+        <button className="danger" type="button" disabled={isClearing} onClick={() => void clearMessages()}>
+          {isClearing ? 'Clearing...' : 'Clear'}
         </button>
+        {error ? <p className="error">{error}</p> : null}
         <div className="message-list">
           {messages.length === 0 ? (
             <p className="hint">No captured messages yet.</p>

@@ -28,6 +28,11 @@ button:hover {
   background: #f0f4f8;
 }
 
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
 .layout {
   display: grid;
   grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
@@ -109,6 +114,12 @@ h2 {
 .hint {
   color: #657386;
   font-size: 13px;
+}
+
+.error {
+  color: #9b2424;
+  font-size: 13px;
+  line-height: 1.4;
 }
 
 .detail {
