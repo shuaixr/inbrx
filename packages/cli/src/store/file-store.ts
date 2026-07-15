@@ -2,6 +2,8 @@ import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { CapturedMessage, MessageStore } from '../types.js';
 
+type DeleteReason = 'deleted' | 'cleared' | 'evicted';
+
 export function createFileMessageStore({
   rootDir,
   maxMessages,
@@ -9,7 +11,7 @@ export function createFileMessageStore({
 }: {
   rootDir: string;
   maxMessages: number;
-  onDelete?: (messageId: string) => Promise<void>;
+  onDelete?: (messageId: string, reason: DeleteReason) => Promise<void>;
 }): MessageStore {
   const messagesDir = path.join(rootDir, 'messages');
 
@@ -36,14 +38,14 @@ export function createFileMessageStore({
       }
 
       await rm(messagePath(messagesDir, id), { force: true });
-      await onDelete?.(id);
+      await onDelete?.(id, 'deleted');
       return true;
     },
 
     async clear() {
       const messages = await listMessages(messagesDir);
       await rm(messagesDir, { recursive: true, force: true });
-      await Promise.all(messages.map((message) => onDelete?.(message.id)));
+      await Promise.all(messages.map((message) => onDelete?.(message.id, 'cleared')));
       return messages.length;
     }
   };
@@ -56,14 +58,14 @@ async function trimMessages({
 }: {
   messagesDir: string;
   maxMessages: number;
-  onDelete?: (messageId: string) => Promise<void>;
+  onDelete?: (messageId: string, reason: DeleteReason) => Promise<void>;
 }): Promise<void> {
   const messages = await listMessages(messagesDir);
   const removed = messages.slice(maxMessages);
   await Promise.all(
     removed.map(async (message) => {
       await rm(messagePath(messagesDir, message.id), { force: true });
-      await onDelete?.(message.id);
+      await onDelete?.(message.id, 'evicted');
     })
   );
 }

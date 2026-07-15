@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { createMailboxEvents, type MailboxEvent } from '../events/mailbox-events.js';
 import { createMemoryAttachmentStore } from '../store/attachment-store.js';
 import { createMemoryStore } from '../store/memory-store.js';
 import { createCapturedMessage } from '../test/factories.js';
@@ -71,6 +72,20 @@ describe('createHttpApp', () => {
     await expect(store.get('message-1')).resolves.toBeNull();
   });
 
+  it('emits an event when deleting one message', async () => {
+    const store = createMemoryStore({ maxMessages: 10 });
+    const events = createMailboxEvents();
+    const emitted: MailboxEvent[] = [];
+    events.subscribe((event) => emitted.push(event));
+    await store.add(createCapturedMessage({ id: 'message-1' }));
+    const app = createTestApp(store, events);
+
+    const response = await app.request('/api/messages/message-1', { method: 'DELETE' });
+
+    expect(response.status).toBe(200);
+    expect(emitted).toEqual([{ type: 'message.deleted', id: 'message-1' }]);
+  });
+
   it('clears all messages', async () => {
     const store = createMemoryStore({ maxMessages: 10 });
     await store.add(createCapturedMessage({ id: 'message-1' }));
@@ -82,6 +97,45 @@ describe('createHttpApp', () => {
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ deleted: 2 });
     await expect(store.list()).resolves.toEqual([]);
+  });
+
+  it('emits an event when clearing messages', async () => {
+    const store = createMemoryStore({ maxMessages: 10 });
+    const events = createMailboxEvents();
+    const emitted: MailboxEvent[] = [];
+    events.subscribe((event) => emitted.push(event));
+    await store.add(createCapturedMessage({ id: 'message-1' }));
+    await store.add(createCapturedMessage({ id: 'message-2' }));
+    const app = createTestApp(store, events);
+
+    const response = await app.request('/api/messages', { method: 'DELETE' });
+
+    expect(response.status).toBe(200);
+    expect(emitted).toEqual([{ type: 'messages.cleared', deleted: 2 }]);
+  });
+
+  it('streams mailbox events through SSE', async () => {
+    const events = createMailboxEvents();
+    const app = createTestApp(createMemoryStore({ maxMessages: 10 }), events);
+
+    const response = await app.request('/api/events');
+    const reader = response.body?.getReader();
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toContain('text/event-stream');
+    expect(reader).toBeDefined();
+
+    const ready = await reader?.read();
+    expect(decodeChunk(ready?.value)).toBe('event: ready\ndata: {"version":1}\n\n');
+
+    events.emit({ type: 'message.created', id: 'message-1', receivedAt: '2026-07-06T00:00:00.000Z' });
+
+    const created = await reader?.read();
+    expect(decodeChunk(created?.value)).toBe(
+      'event: message.created\ndata: {"id":"message-1","receivedAt":"2026-07-06T00:00:00.000Z"}\n\n'
+    );
+
+    await reader?.cancel();
   });
 
   it('downloads stored attachments', async () => {
@@ -158,6 +212,10 @@ describe('createHttpApp', () => {
   });
 });
 
-function createTestApp(store = createMemoryStore({ maxMessages: 10 })) {
-  return createHttpApp({ store, attachmentStore: createMemoryAttachmentStore() });
+function createTestApp(store = createMemoryStore({ maxMessages: 10 }), events = createMailboxEvents()) {
+  return createHttpApp({ store, attachmentStore: createMemoryAttachmentStore(), events });
+}
+
+function decodeChunk(value: Uint8Array | undefined): string {
+  return new TextDecoder().decode(value);
 }

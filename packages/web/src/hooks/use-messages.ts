@@ -55,9 +55,26 @@ export function useMessages() {
     };
 
     load();
-    const interval = window.setInterval(load, 3000);
+    const events = new EventSource('/api/events');
+    const reloadEvents = ['message.created', 'message.deleted', 'messages.cleared'];
 
-    return () => window.clearInterval(interval);
+    for (const eventName of reloadEvents) {
+      events.addEventListener(eventName, load);
+    }
+
+    events.onerror = () => {
+      // EventSource reconnects automatically. Keep the current UI state intact.
+    };
+
+    const interval = window.setInterval(load, 60000);
+
+    return () => {
+      window.clearInterval(interval);
+      for (const eventName of reloadEvents) {
+        events.removeEventListener(eventName, load);
+      }
+      events.close();
+    };
   }, [loadMessages]);
 
   useEffect(() => {

@@ -5,6 +5,7 @@ import { Readable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
 import { serve, type ServerType } from '@hono/node-server';
 import { Hono } from 'hono';
+import { createMailboxEvents, type MailboxEvent, type MailboxEvents } from '../events/mailbox-events.js';
 import type { AttachmentStore, CapturedAttachment, CapturedMessage, ManagedServer, MessageStore } from '../types.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -14,12 +15,14 @@ type MessageSummary = Pick<CapturedMessage, 'id' | 'receivedAt' | 'from' | 'to' 
 
 export function createHttpServer({
   store,
-  attachmentStore
+  attachmentStore,
+  events = createMailboxEvents()
 }: {
   store: MessageStore;
   attachmentStore: AttachmentStore;
+  events?: MailboxEvents;
 }): ManagedServer {
-  const app = createHttpApp({ store, attachmentStore });
+  const app = createHttpApp({ store, attachmentStore, events });
   let server: ServerType | null = null;
 
   return {
@@ -65,10 +68,12 @@ export function createHttpServer({
 
 export function createHttpApp({
   store,
-  attachmentStore
+  attachmentStore,
+  events = createMailboxEvents()
 }: {
   store: MessageStore;
   attachmentStore: AttachmentStore;
+  events?: MailboxEvents;
 }): Hono {
   const app = new Hono();
 
@@ -79,6 +84,8 @@ export function createHttpApp({
 
   app.get('/api/health', (c) => c.json({ status: 'ok' }));
 
+  app.get('/api/events', (c) => sseResponse(events, c.req.raw.signal));
+
   app.get('/api/messages', async (c) =>
     c.json({
       messages: (await store.list()).map(toMessageSummary)
@@ -87,6 +94,7 @@ export function createHttpApp({
 
   app.delete('/api/messages', async (c) => {
     const deleted = await store.clear();
+    events.emit({ type: 'messages.cleared', deleted });
     return c.json({ deleted });
   });
 
@@ -123,13 +131,90 @@ export function createHttpApp({
   });
 
   app.delete('/api/messages/:id', async (c) => {
-    const deleted = await store.delete(c.req.param('id'));
+    const messageId = c.req.param('id');
+    const deleted = await store.delete(messageId);
+    if (deleted) {
+      events.emit({ type: 'message.deleted', id: messageId });
+    }
     return c.json({ deleted }, deleted ? 200 : 404);
   });
 
   app.all('*', (c) => serveStatic(new URL(c.req.url).pathname));
 
   return app;
+}
+
+function sseResponse(events: MailboxEvents, signal: AbortSignal): Response {
+  const encoder = new TextEncoder();
+  let unsubscribe: (() => void) | null = null;
+  let keepalive: NodeJS.Timeout | null = null;
+  let closed = false;
+
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      const send = (event: string, data: unknown): void => {
+        if (closed) {
+          return;
+        }
+
+        controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
+      };
+
+      const cleanup = (): void => {
+        if (closed) {
+          return;
+        }
+
+        closed = true;
+        unsubscribe?.();
+        unsubscribe = null;
+        if (keepalive) {
+          clearInterval(keepalive);
+          keepalive = null;
+        }
+      };
+
+      send('ready', { version: 1 });
+      unsubscribe = events.subscribe((event) => {
+        send(event.type, eventData(event));
+      });
+      keepalive = setInterval(() => {
+        if (!closed) {
+          controller.enqueue(encoder.encode(': keepalive\n\n'));
+        }
+      }, 30000);
+      signal.addEventListener('abort', cleanup, { once: true });
+    },
+
+    cancel() {
+      closed = true;
+      unsubscribe?.();
+      unsubscribe = null;
+      if (keepalive) {
+        clearInterval(keepalive);
+        keepalive = null;
+      }
+    }
+  });
+
+  return new Response(stream, {
+    headers: {
+      'content-type': 'text/event-stream; charset=utf-8',
+      'cache-control': 'no-cache, no-transform',
+      connection: 'keep-alive'
+    }
+  });
+}
+
+function eventData(event: MailboxEvent): Record<string, unknown> {
+  switch (event.type) {
+    case 'message.created':
+      return { id: event.id, receivedAt: event.receivedAt };
+    case 'message.deleted':
+      return { id: event.id };
+    case 'messages.cleared':
+      return { deleted: event.deleted };
+  }
 }
 
 function toMessageSummary(message: CapturedMessage): MessageSummary {

@@ -1,11 +1,13 @@
 import type { CapturedMessage, MessageStore } from '../types.js';
 
+type DeleteReason = 'deleted' | 'cleared' | 'evicted';
+
 export function createMemoryStore({
   maxMessages,
   onDelete
 }: {
   maxMessages: number;
-  onDelete?: (messageId: string) => Promise<void>;
+  onDelete?: (messageId: string, reason: DeleteReason) => Promise<void>;
 }): MessageStore {
   const messages = new Map<string, CapturedMessage>();
   const order: string[] = [];
@@ -19,7 +21,7 @@ export function createMemoryStore({
         const removedId = order.pop();
         if (removedId) {
           messages.delete(removedId);
-          await onDelete?.(removedId);
+          await onDelete?.(removedId, 'evicted');
         }
       }
 
@@ -41,7 +43,7 @@ export function createMemoryStore({
         order.splice(index, 1);
       }
       if (existed) {
-        await onDelete?.(id);
+        await onDelete?.(id, 'deleted');
       }
       return existed;
     },
@@ -51,7 +53,7 @@ export function createMemoryStore({
       const ids = [...messages.keys()];
       messages.clear();
       order.length = 0;
-      await Promise.all(ids.map((id) => onDelete?.(id)));
+      await Promise.all(ids.map((id) => onDelete?.(id, 'cleared')));
       return count;
     }
   };

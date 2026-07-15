@@ -2,7 +2,8 @@ import { readFile } from 'node:fs/promises';
 import { SMTPServer, type SMTPServerAddress, type SMTPServerDataStream, type SMTPServerSession } from 'smtp-server';
 import { generate } from 'selfsigned';
 import { parseMessage } from '../mail/parser.js';
-import type { AttachmentStore, CapturedSmtpSession, MailEnvelope, ManagedServer, MessageStore } from '../types.js';
+import type { MailboxEvents } from '../events/mailbox-events.js';
+import type { AttachmentStore, CapturedMessage, CapturedSmtpSession, MailEnvelope, ManagedServer, MessageStore } from '../types.js';
 
 type SmtpTlsConfig = {
   key: string | Buffer;
@@ -12,12 +13,14 @@ type SmtpTlsConfig = {
 export async function createSmtpServer({
   store,
   attachmentStore,
+  events,
   startTls = false,
   tlsKeyPath = null,
   tlsCertPath = null
 }: {
   store: MessageStore;
   attachmentStore: AttachmentStore;
+  events?: MailboxEvents;
   startTls?: boolean;
   tlsKeyPath?: string | null;
   tlsCertPath?: string | null;
@@ -43,7 +46,10 @@ export async function createSmtpServer({
     },
     onData(stream, session, callback) {
       void handleData(stream, session, store, attachmentStore)
-        .then((messageId) => callback(null, `OK captured as ${messageId}`))
+        .then((message) => {
+          events?.emit({ type: 'message.created', id: message.id, receivedAt: message.receivedAt });
+          callback(null, `OK captured as ${message.id}`);
+        })
         .catch((error: unknown) => callback(error instanceof Error ? error : new Error(String(error))));
     }
   });
@@ -118,7 +124,7 @@ async function handleData(
   session: SMTPServerSession,
   store: MessageStore,
   attachmentStore: AttachmentStore
-): Promise<string> {
+): Promise<CapturedMessage> {
   const raw = await readStream(stream);
   const smtp = toCapturedSmtpSession(session);
   const envelope = toMailEnvelope(smtp);
@@ -130,7 +136,7 @@ async function handleData(
     throw error;
   }
 
-  return message.id;
+  return message;
 }
 
 function readStream(stream: SMTPServerDataStream): Promise<string> {
