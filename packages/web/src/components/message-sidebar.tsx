@@ -36,11 +36,11 @@ export function MessageSidebar({
 
   return (
     <aside className="flex min-w-0 flex-col border-r bg-sidebar text-sidebar-foreground max-[760px]:max-h-[42vh] max-[760px]:border-r-0 max-[760px]:border-b">
-      <MailboxHeader onRefresh={onRefresh} />
+      <MailboxHeader isClearing={isClearing} onClear={onClear} onRefresh={onRefresh} />
 
       <MailboxControls filter={filter} queryText={queryText} onFilterChange={onFilterChange} onQueryChange={onQueryChange} />
 
-      <MailboxActions error={error} isClearing={isClearing} onClear={onClear} />
+      <MailboxError error={error} />
 
       <Separator />
 
@@ -49,17 +49,31 @@ export function MessageSidebar({
   );
 }
 
-function MailboxHeader({ onRefresh }: { onRefresh(): void }) {
+function MailboxHeader({
+  isClearing,
+  onClear,
+  onRefresh
+}: {
+  isClearing: boolean;
+  onClear(): void;
+  onRefresh(): void;
+}) {
   return (
     <div className="flex items-center justify-between gap-3 p-4">
       <div className="flex items-center gap-2">
         <Inbox className="size-5" aria-hidden="true" />
         <h1 className="text-lg leading-tight font-semibold">inbrx</h1>
       </div>
-      <Button type="button" variant="outline" size="sm" onClick={onRefresh}>
-        <RefreshCw data-icon="inline-start" />
-        Refresh
-      </Button>
+      <div className="flex shrink-0 items-center gap-2">
+        <Button type="button" variant="outline" size="sm" onClick={onRefresh}>
+          <RefreshCw data-icon="inline-start" />
+          Refresh
+        </Button>
+        <Button type="button" variant="destructive" size="sm" disabled={isClearing} onClick={onClear}>
+          <Trash2 data-icon="inline-start" />
+          {isClearing ? 'Clearing...' : 'Clear'}
+        </Button>
+      </div>
     </div>
   );
 }
@@ -112,24 +126,8 @@ function FilterButton({ active, label, onClick }: { active: boolean; label: stri
   );
 }
 
-function MailboxActions({
-  error,
-  isClearing,
-  onClear
-}: {
-  error: string | null;
-  isClearing: boolean;
-  onClear(): void;
-}) {
-  return (
-    <div className="px-4 pb-3">
-      <Button className="w-full justify-start" type="button" variant="destructive" disabled={isClearing} onClick={onClear}>
-        <Trash2 data-icon="inline-start" />
-        {isClearing ? 'Clearing...' : 'Clear'}
-      </Button>
-      {error ? <p className="mt-2 text-[13px] leading-5 text-destructive">{error}</p> : null}
-    </div>
-  );
+function MailboxError({ error }: { error: string | null }) {
+  return error ? <p className="px-4 pb-3 text-[13px] leading-5 text-destructive">{error}</p> : null;
 }
 
 function MessageList({
