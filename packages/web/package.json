@@ -15,19 +15,24 @@
   },
   "scripts": {
     "dev": "vite --host 127.0.0.1",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "build": "tsc --noEmit -p tsconfig.json && vite build",
-    "check": "tsc --noEmit -p tsconfig.json && vite build"
+    "check": "tsc --noEmit -p tsconfig.json && npm run test && vite build"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.2",
+    "@testing-library/react": "^16.3.2",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.2.0",
+    "jsdom": "^29.1.1",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "shadcn": "^4.13.0",
     "tailwindcss": "^4.3.2",
-    "vite": "^7.3.6"
+    "vite": "^7.3.6",
+    "vitest": "^4.1.10"
   },
   "engines": {
     "node": ">=22.12.0"
