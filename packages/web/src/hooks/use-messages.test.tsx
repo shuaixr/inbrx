@@ -87,6 +87,29 @@ describe('useMessages', () => {
     expect(MockEventSource.instances[0]?.url).toBe('/api/events');
   });
 
+  it('requests messages with search query parameters after debounce', async () => {
+    const { result } = renderHook(() => useMessages());
+    await waitFor(() => expect(fetchPaths()).toEqual(['/api/messages']));
+
+    await act(async () => {
+      result.current.setQueryText('  reset alice  ');
+      await delay(250);
+    });
+
+    await waitFor(() => expect(fetchPaths()).toContain('/api/messages?q=reset+alice'));
+  });
+
+  it('requests messages with filter parameters', async () => {
+    const { result } = renderHook(() => useMessages());
+    await waitFor(() => expect(fetchPaths()).toEqual(['/api/messages']));
+
+    act(() => {
+      result.current.setFilter('with-attachments');
+    });
+
+    await waitFor(() => expect(fetchPaths()).toContain('/api/messages?hasAttachments=true'));
+  });
+
   it('reloads messages when mailbox events arrive', async () => {
     messages = [createMessage('message-1')];
     details.set('message-1', createDetail(messages[0]));
@@ -191,7 +214,7 @@ describe('useMessages', () => {
     expect(result.current.messages).toEqual([second]);
     expect(result.current.selectedId).toBeNull();
     expect(result.current.selectedMessage).toBeNull();
-    expect(fetchCalls.some((call) => pathFor(call.input) === '/api/messages' && call.init?.method === 'DELETE')).toBe(true);
+    expect(fetchCalls.some((call) => pathOnly(call.input) === '/api/messages' && call.init?.method === 'DELETE')).toBe(true);
   });
 
   it('keeps state intact when EventSource reports an error', async () => {
@@ -208,6 +231,24 @@ describe('useMessages', () => {
 
     expect(result.current.messages).toEqual([first]);
     expect(result.current.selectedId).toBe('message-1');
+  });
+
+  it('keeps query parameters when mailbox events arrive', async () => {
+    const { result } = renderHook(() => useMessages());
+    await waitFor(() => expect(MockEventSource.instances).toHaveLength(1));
+
+    await act(async () => {
+      result.current.setQueryText('reset');
+      await delay(250);
+    });
+    await waitFor(() => expect(fetchPaths()).toContain('/api/messages?q=reset'));
+
+    await act(async () => {
+      currentEventSource().dispatch('message.created');
+    });
+
+    await waitFor(() => expect(fetchPaths().filter((path) => path === '/api/messages?q=reset')).toHaveLength(2));
+    expect(MockEventSource.instances).toHaveLength(1);
   });
 
   it('closes the event stream and removes listeners on unmount', async () => {
@@ -228,7 +269,7 @@ describe('useMessages', () => {
   async function fetchMock(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
     fetchCalls.push({ input, init });
 
-    const path = pathFor(input);
+    const path = pathOnly(input);
     if (path === '/api/messages' && init?.method === 'DELETE') {
       deleted = true;
       return jsonResponse({});
@@ -253,7 +294,7 @@ describe('useMessages', () => {
   }
 
   function fetchPaths(): string[] {
-    return fetchCalls.map((call) => pathFor(call.input));
+    return fetchCalls.map((call) => urlFor(call.input));
   }
 });
 
@@ -275,16 +316,21 @@ function jsonResponse(body: unknown, status = 200): Response {
   });
 }
 
-function pathFor(input: RequestInfo | URL): string {
+function urlFor(input: RequestInfo | URL): string {
   if (typeof input === 'string') {
     return input;
   }
 
   if (input instanceof URL) {
-    return input.pathname;
+    return `${input.pathname}${input.search}`;
   }
 
   return input.url;
+}
+
+function pathOnly(input: RequestInfo | URL): string {
+  const url = urlFor(input);
+  return url.startsWith('/api/') ? (url.split('?')[0] ?? url) : new URL(url).pathname;
 }
 
 function createMessage(id: string, overrides: Partial<MessageSummary> = {}): MessageSummary {
@@ -295,6 +341,7 @@ function createMessage(id: string, overrides: Partial<MessageSummary> = {}): Mes
     to: ['recipient@example.com'],
     subject: 'Subject',
     rawSizeBytes: 128,
+    attachmentCount: 0,
     ...overrides
   };
 }
@@ -311,4 +358,10 @@ function createDetail(message: MessageSummary, overrides: Partial<MessageDetail>
     raw: 'Subject: Subject\r\n\r\nBody',
     ...overrides
   };
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
 }

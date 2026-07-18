@@ -6,12 +6,24 @@ import { fileURLToPath } from 'node:url';
 import { serve, type ServerType } from '@hono/node-server';
 import { Hono } from 'hono';
 import { createMailboxEvents, type MailboxEvent, type MailboxEvents } from '../events/mailbox-events.js';
-import type { AttachmentStore, CapturedAttachment, CapturedMessage, ManagedServer, MessageStore } from '../types.js';
+import type {
+  AttachmentStore,
+  CapturedAttachment,
+  CapturedMessage,
+  ManagedServer,
+  MessageListQuery,
+  MessageStore
+} from '../types.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const WEB_ROOT = path.resolve(__dirname, '../../..', 'web/dist');
 
-type MessageSummary = Pick<CapturedMessage, 'id' | 'receivedAt' | 'from' | 'to' | 'subject' | 'rawSizeBytes'>;
+type MessageSummary = Pick<CapturedMessage, 'id' | 'receivedAt' | 'from' | 'to' | 'subject' | 'rawSizeBytes'> & {
+  attachmentCount: number;
+};
+type MessageDetail = CapturedMessage & {
+  attachmentCount: number;
+};
 
 export function createHttpServer({
   store,
@@ -86,11 +98,16 @@ export function createHttpApp({
 
   app.get('/api/events', (c) => sseResponse(events, c.req.raw.signal));
 
-  app.get('/api/messages', async (c) =>
-    c.json({
-      messages: (await store.list()).map(toMessageSummary)
-    })
-  );
+  app.get('/api/messages', async (c) => {
+    const query = parseMessageListQuery(new URL(c.req.url).searchParams);
+    if ('error' in query) {
+      return c.json({ error: query.error }, 400);
+    }
+
+    return c.json({
+      messages: (await store.list(query.value)).map(toMessageSummary)
+    });
+  });
 
   app.delete('/api/messages', async (c) => {
     const deleted = await store.clear();
@@ -217,6 +234,50 @@ function eventData(event: MailboxEvent): Record<string, unknown> {
   }
 }
 
+function parseMessageListQuery(searchParams: URLSearchParams): { value: MessageListQuery } | { error: string } {
+  const query: MessageListQuery = {};
+  const q = searchParams.get('q')?.trim();
+  const hasAttachments = searchParams.get('hasAttachments');
+  const receivedAfter = searchParams.get('receivedAfter');
+  const receivedBefore = searchParams.get('receivedBefore');
+
+  if (q) {
+    query.q = q;
+  }
+
+  if (hasAttachments) {
+    if (hasAttachments !== 'true') {
+      return { error: 'Invalid hasAttachments.' };
+    }
+    query.hasAttachments = true;
+  }
+
+  if (receivedAfter) {
+    if (!isValidIsoDate(receivedAfter)) {
+      return { error: 'Invalid receivedAfter.' };
+    }
+    query.receivedAfter = receivedAfter;
+  }
+
+  if (receivedBefore) {
+    if (!isValidIsoDate(receivedBefore)) {
+      return { error: 'Invalid receivedBefore.' };
+    }
+    query.receivedBefore = receivedBefore;
+  }
+
+  if (query.receivedAfter && query.receivedBefore && query.receivedAfter >= query.receivedBefore) {
+    return { error: 'receivedAfter must be before receivedBefore.' };
+  }
+
+  return { value: query };
+}
+
+function isValidIsoDate(value: string): boolean {
+  const date = new Date(value);
+  return !Number.isNaN(date.getTime()) && date.toISOString() === value;
+}
+
 function toMessageSummary(message: CapturedMessage): MessageSummary {
   return {
     id: message.id,
@@ -224,11 +285,12 @@ function toMessageSummary(message: CapturedMessage): MessageSummary {
     from: message.from,
     to: message.to,
     subject: message.subject,
-    rawSizeBytes: message.rawSizeBytes
+    rawSizeBytes: message.rawSizeBytes,
+    attachmentCount: message.attachments.length
   };
 }
 
-function toMessageDetail(message: CapturedMessage): CapturedMessage {
+function toMessageDetail(message: CapturedMessage): MessageDetail {
   return {
     ...toMessageSummary(message),
     cc: message.cc,

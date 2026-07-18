@@ -5,6 +5,7 @@ export type MessageSummary = {
   to: string[];
   subject: string | null;
   rawSizeBytes: number;
+  attachmentCount: number;
 };
 
 export type MessageAttachment = {
@@ -25,3 +26,5 @@ export type MessageDetail = MessageSummary & {
 };
 
 export type ActiveTab = 'body' | 'headers' | 'raw';
+
+export type MessageFilter = 'all' | 'with-attachments' | 'today';

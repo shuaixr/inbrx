@@ -31,12 +31,95 @@ describe('createHttpApp', () => {
         from: 'sender@example.com',
         to: ['recipient@example.com'],
         subject: 'First',
-        rawSizeBytes: 128
+        rawSizeBytes: 128,
+        attachmentCount: 0
       }
     ]);
     expect(body.messages[0]).not.toHaveProperty('raw');
     expect(body.messages[0]).not.toHaveProperty('text');
     expect(body.messages[0]).not.toHaveProperty('html');
+  });
+
+  it('lists message summaries with attachment counts', async () => {
+    const store = createMemoryStore({ maxMessages: 10 });
+    await store.add(
+      createCapturedMessage({
+        id: 'message-1',
+        attachments: [
+          {
+            id: 'attachment-1',
+            filename: 'note.txt',
+            contentType: 'text/plain',
+            sizeBytes: 12,
+            storageKey: 'message-1/attachment-1'
+          },
+          {
+            id: 'attachment-2',
+            filename: 'report.pdf',
+            contentType: 'application/pdf',
+            sizeBytes: 24,
+            storageKey: 'message-1/attachment-2'
+          }
+        ]
+      })
+    );
+    const app = createTestApp(store);
+
+    const response = await app.request('/api/messages');
+    const body = (await response.json()) as { messages: Array<Record<string, unknown>> };
+
+    expect(response.status).toBe(200);
+    expect(body.messages[0]?.attachmentCount).toBe(2);
+  });
+
+  it('filters message summaries by search query', async () => {
+    const store = createMemoryStore({ maxMessages: 10 });
+    await store.add(createCapturedMessage({ id: 'message-1', subject: 'Password reset', text: 'Hello Alice' }));
+    await store.add(createCapturedMessage({ id: 'message-2', subject: 'Welcome', text: 'Hello Bob' }));
+    const app = createTestApp(store);
+
+    const response = await app.request('/api/messages?q=reset%20alice');
+    const body = (await response.json()) as { messages: Array<{ id: string }> };
+
+    expect(response.status).toBe(200);
+    expect(body.messages.map((message) => message.id)).toEqual(['message-1']);
+  });
+
+  it('filters message summaries by attachments and received date range', async () => {
+    const store = createMemoryStore({ maxMessages: 10 });
+    const attachment = {
+      id: 'attachment-1',
+      filename: 'note.txt',
+      contentType: 'text/plain',
+      sizeBytes: 12,
+      storageKey: 'message-1/attachment-1'
+    };
+    await store.add(createCapturedMessage({ id: 'old', receivedAt: '2026-07-17T23:59:59.999Z', attachments: [attachment] }));
+    await store.add(createCapturedMessage({ id: 'match', receivedAt: '2026-07-18T12:00:00.000Z', attachments: [attachment] }));
+    await store.add(createCapturedMessage({ id: 'without-attachment', receivedAt: '2026-07-18T13:00:00.000Z' }));
+    await store.add(createCapturedMessage({ id: 'next', receivedAt: '2026-07-19T00:00:00.000Z', attachments: [attachment] }));
+    const app = createTestApp(store);
+
+    const response = await app.request(
+      '/api/messages?hasAttachments=true&receivedAfter=2026-07-18T00%3A00%3A00.000Z&receivedBefore=2026-07-19T00%3A00%3A00.000Z'
+    );
+    const body = (await response.json()) as { messages: Array<{ id: string }> };
+
+    expect(response.status).toBe(200);
+    expect(body.messages.map((message) => message.id)).toEqual(['match']);
+  });
+
+  it('returns 400 for invalid message query parameters', async () => {
+    const app = createTestApp();
+
+    await expectBadRequest(app, '/api/messages?hasAttachments=false', 'Invalid hasAttachments.');
+    await expectBadRequest(app, '/api/messages?receivedAfter=not-a-date', 'Invalid receivedAfter.');
+    await expectBadRequest(app, '/api/messages?receivedBefore=not-a-date', 'Invalid receivedBefore.');
+    await expectBadRequest(
+      app,
+      '/api/messages?receivedAfter=2026-07-19T00%3A00%3A00.000Z&receivedBefore=2026-07-18T00%3A00%3A00.000Z',
+      'receivedAfter must be before receivedBefore.'
+    );
   });
 
   it('returns message details', async () => {
@@ -48,7 +131,7 @@ describe('createHttpApp', () => {
     const response = await app.request('/api/messages/message-1');
 
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({ message });
+    await expect(response.json()).resolves.toEqual({ message: { ...message, attachmentCount: 0 } });
   });
 
   it('returns 404 for a missing message', async () => {
@@ -214,6 +297,13 @@ describe('createHttpApp', () => {
 
 function createTestApp(store = createMemoryStore({ maxMessages: 10 }), events = createMailboxEvents()) {
   return createHttpApp({ store, attachmentStore: createMemoryAttachmentStore(), events });
+}
+
+async function expectBadRequest(app: ReturnType<typeof createHttpApp>, path: string, error: string): Promise<void> {
+  const response = await app.request(path);
+
+  expect(response.status).toBe(400);
+  await expect(response.json()).resolves.toEqual({ error });
 }
 
 function decodeChunk(value: Uint8Array | undefined): string {

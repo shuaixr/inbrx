@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
-import { clearMessages as clearMessagesRequest, fetchMessage, fetchMessages } from '@/lib/messages-api';
-import type { MessageDetail, MessageSummary } from '@/types';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { clearMessages as clearMessagesRequest, fetchMessage, fetchMessages, type FetchMessagesParams } from '@/lib/messages-api';
+import type { MessageDetail, MessageFilter, MessageSummary } from '@/types';
 
 export function useMessages() {
   const [messages, setMessages] = useState<MessageSummary[]>([]);
@@ -8,9 +8,13 @@ export function useMessages() {
   const [selectedMessage, setSelectedMessage] = useState<MessageDetail | null>(null);
   const [isClearing, setIsClearing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [queryText, setQueryText] = useState('');
+  const [debouncedQueryText, setDebouncedQueryText] = useState('');
+  const [filter, setFilter] = useState<MessageFilter>('all');
+  const loadMessagesRef = useRef<() => void>(() => {});
 
   const loadMessages = useCallback(async ({ autoSelect = true }: { autoSelect?: boolean } = {}) => {
-    const nextMessages = await fetchMessages();
+    const nextMessages = await fetchMessages(queryParamsFor({ queryText: debouncedQueryText, filter }));
     setError(null);
     setMessages(nextMessages);
 
@@ -25,7 +29,15 @@ export function useMessages() {
 
       return null;
     });
-  }, []);
+  }, [debouncedQueryText, filter]);
+
+  useEffect(() => {
+    loadMessagesRef.current = () => {
+      void loadMessages().catch((loadError) => {
+        setError(loadError instanceof Error ? loadError.message : 'Failed to load messages');
+      });
+    };
+  }, [loadMessages]);
 
   const clearMessages = useCallback(async () => {
     if (isClearing) {
@@ -48,13 +60,21 @@ export function useMessages() {
   }, [isClearing, loadMessages]);
 
   useEffect(() => {
-    const load = () => {
-      void loadMessages().catch((loadError) => {
-        setError(loadError instanceof Error ? loadError.message : 'Failed to load messages');
-      });
-    };
+    const timeout = window.setTimeout(() => {
+      setDebouncedQueryText(queryText.trim());
+    }, 200);
 
-    load();
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [queryText]);
+
+  useEffect(() => {
+    loadMessagesRef.current();
+  }, [loadMessages]);
+
+  useEffect(() => {
+    const load = () => loadMessagesRef.current();
     const events = new EventSource('/api/events');
     const reloadEvents = ['message.created', 'message.deleted', 'messages.cleared'];
 
@@ -75,7 +95,7 @@ export function useMessages() {
       }
       events.close();
     };
-  }, [loadMessages]);
+  }, []);
 
   useEffect(() => {
     if (!selectedId) {
@@ -107,8 +127,43 @@ export function useMessages() {
     selectedMessage,
     isClearing,
     error,
+    queryText,
+    filter,
     clearMessages,
     loadMessages,
+    setQueryText,
+    setFilter,
     selectMessage: setSelectedId
+  };
+}
+
+function queryParamsFor({ queryText, filter }: { queryText: string; filter: MessageFilter }): FetchMessagesParams {
+  const params: FetchMessagesParams = {};
+
+  if (queryText) {
+    params.q = queryText;
+  }
+
+  if (filter === 'with-attachments') {
+    params.hasAttachments = true;
+  }
+
+  if (filter === 'today') {
+    const { start, end } = localDayBounds(new Date());
+    params.receivedAfter = start;
+    params.receivedBefore = end;
+  }
+
+  return params;
+}
+
+function localDayBounds(now: Date): { start: string; end: string } {
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const end = new Date(start);
+  end.setDate(start.getDate() + 1);
+
+  return {
+    start: start.toISOString(),
+    end: end.toISOString()
   };
 }

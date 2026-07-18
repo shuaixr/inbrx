@@ -1,4 +1,5 @@
 import type { CapturedMessage, MessageStore } from '../types.js';
+import { filterMessages } from './message-query.js';
 
 type DeleteReason = 'deleted' | 'cleared' | 'evicted';
 
@@ -28,8 +29,11 @@ export function createMemoryStore({
       return message;
     },
 
-    async list() {
-      return order.map((id) => messages.get(id)).filter((message): message is CapturedMessage => Boolean(message));
+    async list(query) {
+      const allMessages = order
+        .map((id) => messages.get(id))
+        .filter((message): message is CapturedMessage => Boolean(message));
+      return filterMessages(allMessages, query);
     },
 
     async get(id) {

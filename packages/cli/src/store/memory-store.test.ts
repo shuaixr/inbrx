@@ -54,4 +54,13 @@ describe('createMemoryStore', () => {
 
     expect(deleted).toEqual(['first', 'second', 'third']);
   });
+
+  it('lists messages matching a query', async () => {
+    const store = createMemoryStore({ maxMessages: 10 });
+
+    await store.add(createCapturedMessage({ id: 'first', subject: 'Password reset', text: 'Hello Alice' }));
+    await store.add(createCapturedMessage({ id: 'second', subject: 'Welcome', text: 'Hello Bob' }));
+
+    expect((await store.list({ q: 'reset alice' })).map((message) => message.id)).toEqual(['first']);
+  });
 });

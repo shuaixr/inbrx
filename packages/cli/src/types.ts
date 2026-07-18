@@ -65,9 +65,16 @@ export type MailEnvelope = {
   to: string[];
 };
 
+export type MessageListQuery = {
+  q?: string;
+  hasAttachments?: boolean;
+  receivedAfter?: string;
+  receivedBefore?: string;
+};
+
 export type MessageStore = {
   add(message: CapturedMessage): Promise<CapturedMessage>;
-  list(): Promise<CapturedMessage[]>;
+  list(query?: MessageListQuery): Promise<CapturedMessage[]>;
   get(id: string): Promise<CapturedMessage | null>;
   delete(id: string): Promise<boolean>;
   clear(): Promise<number>;

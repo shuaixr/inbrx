@@ -130,4 +130,14 @@ describe('file-backed stores', () => {
     expect((await store.list()).map((message) => message.id)).toEqual(['message-1']);
     await expect(store.get('broken')).resolves.toBeNull();
   });
+
+  it('lists persisted messages matching a query', async () => {
+    tempDir = await mkdtemp(path.join(os.tmpdir(), 'inbrx-store-'));
+    const store = createFileMessageStore({ rootDir: tempDir, maxMessages: 10 });
+
+    await store.add(createCapturedMessage({ id: 'first', subject: 'Password reset', text: 'Hello Alice' }));
+    await store.add(createCapturedMessage({ id: 'second', subject: 'Welcome', text: 'Hello Bob' }));
+
+    expect((await store.list({ q: 'reset alice' })).map((message) => message.id)).toEqual(['first']);
+  });
 });

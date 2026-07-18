@@ -1,6 +1,7 @@
 import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import type { CapturedMessage, MessageStore } from '../types.js';
+import type { CapturedMessage, MessageListQuery, MessageStore } from '../types.js';
+import { filterMessages } from './message-query.js';
 
 type DeleteReason = 'deleted' | 'cleared' | 'evicted';
 
@@ -23,8 +24,8 @@ export function createFileMessageStore({
       return message;
     },
 
-    async list() {
-      return listMessages(messagesDir);
+    async list(query) {
+      return listMessages(messagesDir, query);
     },
 
     async get(id) {
@@ -70,7 +71,7 @@ async function trimMessages({
   );
 }
 
-async function listMessages(messagesDir: string): Promise<CapturedMessage[]> {
+async function listMessages(messagesDir: string, query?: MessageListQuery): Promise<CapturedMessage[]> {
   let entries: string[];
   try {
     entries = await readdir(messagesDir);
@@ -84,9 +85,11 @@ async function listMessages(messagesDir: string): Promise<CapturedMessage[]> {
       .map((entry) => readMessageFile(path.join(messagesDir, entry)))
   );
 
-  return messages
+  const sortedMessages = messages
     .filter((message): message is CapturedMessage => Boolean(message))
     .sort((a, b) => b.receivedAt.localeCompare(a.receivedAt));
+
+  return filterMessages(sortedMessages, query);
 }
 
 async function readMessage(messagesDir: string, id: string): Promise<CapturedMessage | null> {
