@@ -2,12 +2,16 @@ name: Publish
 
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Version without v, e.g. 0.0.1-alpha.5"
+        required: true
   release:
     types:
       - published
 
 permissions:
-  contents: read
+  contents: write
   id-token: write
 
 concurrency:
@@ -33,6 +37,35 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Verify release version matches package versions
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            TAG_NAME="${{ github.event.release.tag_name }}"
+
+            case "$TAG_NAME" in
+              v*) VERSION="${TAG_NAME#v}" ;;
+              *)
+                echo "Release tag $TAG_NAME must start with v"
+                exit 1
+                ;;
+            esac
+          else
+            VERSION="${{ inputs.version }}"
+          fi
+
+          CLI_VERSION=$(node -p "require('./packages/cli/package.json').version")
+          WEB_VERSION=$(node -p "require('./packages/web/package.json').version")
+
+          if [ "$VERSION" != "$CLI_VERSION" ]; then
+            echo "Release version $VERSION does not match @inbrx/cli version $CLI_VERSION"
+            exit 1
+          fi
+
+          if [ "$VERSION" != "$WEB_VERSION" ]; then
+            echo "Release version $VERSION does not match @inbrx/web version $WEB_VERSION"
+            exit 1
+          fi
+
       - name: Run checks
         run: npm run check
 
@@ -43,6 +76,16 @@ jobs:
         run: |
           npm pack --dry-run -w @inbrx/web
           npm pack --dry-run -w @inbrx/cli
+
+      - name: Create release
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v${{ inputs.version }}" \
+            --target "${{ github.sha }}" \
+            --title "v${{ inputs.version }}" \
+            --generate-notes
 
       - name: Publish web package
         run: npm publish -w @inbrx/web --provenance
