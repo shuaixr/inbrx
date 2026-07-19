@@ -7,7 +7,7 @@
 
 inbrx is a local SMTP testing environment for capturing and inspecting test emails.
 
-![inbrx Web UI](docs/web-ui.png)
+![inbrx Web UI](https://raw.githubusercontent.com/shuaixr/inbrx/master/docs/web-ui.png)
 
 ## Quick Start
 
