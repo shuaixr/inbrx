@@ -7,6 +7,7 @@ import { serve, type ServerType } from '@hono/node-server';
 import { Hono } from 'hono';
 import { createMailboxEvents, type MailboxEvent, type MailboxEvents } from '../events/mailbox-events.js';
 import type {
+  AppConfig,
   AttachmentStore,
   CapturedAttachment,
   CapturedMessage,
@@ -24,17 +25,25 @@ type MessageSummary = Pick<CapturedMessage, 'id' | 'receivedAt' | 'from' | 'to' 
 type MessageDetail = CapturedMessage & {
   attachmentCount: number;
 };
+type ConnectionSettings = {
+  smtpHost: string;
+  smtpPort: number;
+  smtpStartTls: boolean;
+  smtpAuth: 'optional';
+};
 
 export function createHttpServer({
   store,
   attachmentStore,
+  connectionSettings,
   events = createMailboxEvents()
 }: {
   store: MessageStore;
   attachmentStore: AttachmentStore;
+  connectionSettings: ConnectionSettings;
   events?: MailboxEvents;
 }): ManagedServer {
-  const app = createHttpApp({ store, attachmentStore, events });
+  const app = createHttpApp({ store, attachmentStore, connectionSettings, events });
   let server: ServerType | null = null;
 
   return {
@@ -81,10 +90,22 @@ export function createHttpServer({
 export function createHttpApp({
   store,
   attachmentStore,
+  connectionSettings = toConnectionSettings({
+    smtpHost: '127.0.0.1',
+    smtpPort: 2525,
+    smtpStartTls: false,
+    smtpTlsKeyPath: null,
+    smtpTlsCertPath: null,
+    httpHost: '127.0.0.1',
+    httpPort: 3000,
+    maxMessages: 500,
+    storage: 'memory'
+  }),
   events = createMailboxEvents()
 }: {
   store: MessageStore;
   attachmentStore: AttachmentStore;
+  connectionSettings?: ConnectionSettings;
   events?: MailboxEvents;
 }): Hono {
   const app = new Hono();
@@ -95,6 +116,8 @@ export function createHttpApp({
   });
 
   app.get('/api/health', (c) => c.json({ status: 'ok' }));
+
+  app.get('/api/connection', (c) => c.json({ connection: connectionSettings }));
 
   app.get('/api/events', (c) => sseResponse(events, c.req.raw.signal));
 
@@ -159,6 +182,15 @@ export function createHttpApp({
   app.all('*', (c) => serveStatic(new URL(c.req.url).pathname));
 
   return app;
+}
+
+export function toConnectionSettings(config: AppConfig): ConnectionSettings {
+  return {
+    smtpHost: config.smtpHost,
+    smtpPort: config.smtpPort,
+    smtpStartTls: config.smtpStartTls,
+    smtpAuth: 'optional'
+  };
 }
 
 function sseResponse(events: MailboxEvents, signal: AbortSignal): Response {

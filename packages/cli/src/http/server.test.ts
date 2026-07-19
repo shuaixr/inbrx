@@ -15,6 +15,31 @@ describe('createHttpApp', () => {
     await expect(response.json()).resolves.toEqual({ status: 'ok' });
   });
 
+  it('returns connection settings', async () => {
+    const app = createHttpApp({
+      store: createMemoryStore({ maxMessages: 10 }),
+      attachmentStore: createMemoryAttachmentStore(),
+      connectionSettings: {
+        smtpHost: '0.0.0.0',
+        smtpPort: 2526,
+        smtpStartTls: true,
+        smtpAuth: 'optional'
+      }
+    });
+
+    const response = await app.request('/api/connection');
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      connection: {
+        smtpHost: '0.0.0.0',
+        smtpPort: 2526,
+        smtpStartTls: true,
+        smtpAuth: 'optional'
+      }
+    });
+  });
+
   it('lists message summaries without body fields', async () => {
     const store = createMemoryStore({ maxMessages: 10 });
     await store.add(createCapturedMessage({ id: 'message-1', subject: 'First' }));

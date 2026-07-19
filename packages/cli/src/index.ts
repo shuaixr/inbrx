@@ -1,5 +1,5 @@
 import { createMailboxEvents, type MailboxEvents } from './events/mailbox-events.js';
-import { createHttpServer } from './http/server.js';
+import { createHttpServer, toConnectionSettings } from './http/server.js';
 import { createFileAttachmentStore, createMemoryAttachmentStore } from './store/attachment-store.js';
 import { getDefaultDataDir } from './store/data-dir.js';
 import { createFileMessageStore } from './store/file-store.js';
@@ -18,7 +18,7 @@ export async function startApp(config: AppConfig): Promise<{ store: MessageStore
     tlsKeyPath: config.smtpTlsKeyPath,
     tlsCertPath: config.smtpTlsCertPath
   });
-  const httpServer = createHttpServer({ store, attachmentStore, events });
+  const httpServer = createHttpServer({ store, attachmentStore, connectionSettings: toConnectionSettings(config), events });
 
   await Promise.all([
     smtpServer.listen(config.smtpPort, config.smtpHost),

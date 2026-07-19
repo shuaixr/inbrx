@@ -1,4 +1,6 @@
-import { Inbox, Paperclip, RefreshCw, Search, Trash2 } from 'lucide-react';
+import { useState } from 'react';
+import { Inbox, Paperclip, Plug, RefreshCw, Search, Trash2 } from 'lucide-react';
+import { ConnectDialog } from '@/components/connect-dialog';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
@@ -54,26 +56,37 @@ function MailboxHeader({
   onClear(): void;
   onRefresh(): void;
 }) {
+  const [isConnectOpen, setIsConnectOpen] = useState(false);
+
   return (
-    <div className="flex items-start justify-between gap-3 p-4">
-      <div className="flex min-w-0 flex-col gap-1">
-        <div className="flex items-center gap-2">
-          <Inbox className="size-5" aria-hidden="true" />
-          <h1 className="text-lg leading-tight font-semibold">inbrx</h1>
+    <>
+      <div className="flex flex-col gap-3 p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 flex-col gap-1">
+            <div className="flex items-center gap-2">
+              <Inbox className="size-5" aria-hidden="true" />
+              <h1 className="text-lg leading-tight font-semibold">inbrx</h1>
+            </div>
+            <p className="text-[12px] leading-4 text-muted-foreground">Local SMTP testing inbox</p>
+          </div>
+          <Button type="button" variant="outline" size="sm" onClick={() => setIsConnectOpen(true)}>
+            <Plug data-icon="inline-start" />
+            Connect
+          </Button>
         </div>
-        <p className="text-[12px] leading-4 text-muted-foreground">Local SMTP testing inbox</p>
+        <div className="grid grid-cols-2 gap-2">
+          <Button type="button" variant="outline" size="sm" onClick={onRefresh}>
+            <RefreshCw data-icon="inline-start" />
+            Refresh
+          </Button>
+          <Button type="button" variant="destructive" size="sm" disabled={isClearing} onClick={onClear}>
+            <Trash2 data-icon="inline-start" />
+            {isClearing ? 'Clearing...' : 'Clear'}
+          </Button>
+        </div>
       </div>
-      <div className="flex shrink-0 items-center gap-2">
-        <Button type="button" variant="outline" size="sm" onClick={onRefresh}>
-          <RefreshCw data-icon="inline-start" />
-          Refresh
-        </Button>
-        <Button type="button" variant="destructive" size="sm" disabled={isClearing} onClick={onClear}>
-          <Trash2 data-icon="inline-start" />
-          {isClearing ? 'Clearing...' : 'Clear'}
-        </Button>
-      </div>
-    </div>
+      <ConnectDialog open={isConnectOpen} onOpenChange={setIsConnectOpen} />
+    </>
   );
 }
 
