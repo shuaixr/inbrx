@@ -13,6 +13,9 @@
     "dev": "npm run dev -w @inbrx/cli",
     "dev:cli": "npm run dev -w @inbrx/cli",
     "dev:web": "npm run dev -w @inbrx/web",
+    "docs:dev": "npm run dev -w @inbrx/docs",
+    "docs:build": "npm run build -w @inbrx/docs",
+    "docs:preview": "npm run preview -w @inbrx/docs",
     "check": "npm run check -ws",
     "coverage": "npm run coverage -w @inbrx/cli"
   },

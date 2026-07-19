@@ -1,0 +1,17 @@
+{
+  "name": "@inbrx/docs",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "ASTRO_TELEMETRY_DISABLED=true astro dev --host 127.0.0.1",
+    "build": "ASTRO_TELEMETRY_DISABLED=true astro check && ASTRO_TELEMETRY_DISABLED=true astro build",
+    "check": "ASTRO_TELEMETRY_DISABLED=true astro check && ASTRO_TELEMETRY_DISABLED=true astro build",
+    "preview": "ASTRO_TELEMETRY_DISABLED=true astro preview --host 127.0.0.1"
+  },
+  "dependencies": {
+    "@astrojs/check": "latest",
+    "@astrojs/starlight": "latest",
+    "astro": "latest",
+    "typescript": "^5.9.3"
+  }
+}

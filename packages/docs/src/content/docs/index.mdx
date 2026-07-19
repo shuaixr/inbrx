@@ -1,0 +1,24 @@
+---
+title: Home
+description: Local SMTP testing environment for capturing and inspecting test emails.
+template: splash
+hero:
+  title: inbrx
+  tagline: Capture and inspect test emails locally.
+  actions:
+    - text: Get started
+      link: /quick-start/
+      icon: right-arrow
+    - text: GitHub
+      link: https://github.com/shuaixr/inbrx
+      icon: external
+---
+
+inbrx starts a local SMTP server and Web UI for development and test environments.
+Use it to capture email flows locally without sending real email.
+
+```bash
+npx @inbrx/cli
+```
+
+By default, inbrx listens for SMTP on `127.0.0.1:2525` and serves the Web UI at `http://127.0.0.1:3000`.
