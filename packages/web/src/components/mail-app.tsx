@@ -1,18 +1,16 @@
 import { MessageDetail } from '@/components/message-detail';
 import { MessageSidebar } from '@/components/message-sidebar';
-import type { MessageDetail as MessageDetailType, MessageFilter, MessageSummary } from '@/types';
+import type { MessageDetail as MessageDetailType, MessageSummary } from '@/types';
 
 type MailAppProps = {
   messages: MessageSummary[];
   queryText: string;
   selectedId: string | null;
   selectedMessage: MessageDetailType | null;
-  filter: MessageFilter;
   isClearing: boolean;
   error: string | null;
   onRefresh(): void;
   onClear(): void;
-  onFilterChange(filter: MessageFilter): void;
   onQueryChange(query: string): void;
   onSelect(messageId: string): void;
 };
@@ -22,12 +20,10 @@ export function MailApp({
   queryText,
   selectedId,
   selectedMessage,
-  filter,
   isClearing,
   error,
   onRefresh,
   onClear,
-  onFilterChange,
   onQueryChange,
   onSelect
 }: MailAppProps) {
@@ -36,14 +32,12 @@ export function MailApp({
       sidebar={
         <MessageSidebar
           error={error}
-          filter={filter}
           isClearing={isClearing}
           messages={messages}
           queryText={queryText}
           selectedId={selectedId}
-          onClear={onClear}
-          onFilterChange={onFilterChange}
           onQueryChange={onQueryChange}
+          onClear={onClear}
           onRefresh={onRefresh}
           onSelect={onSelect}
         />

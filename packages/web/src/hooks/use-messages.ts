@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { clearMessages as clearMessagesRequest, fetchMessage, fetchMessages, type FetchMessagesParams } from '@/lib/messages-api';
-import type { MessageDetail, MessageFilter, MessageSummary } from '@/types';
+import type { MessageDetail, MessageSummary } from '@/types';
 
 export function useMessages() {
   const [messages, setMessages] = useState<MessageSummary[]>([]);
@@ -10,11 +10,10 @@ export function useMessages() {
   const [error, setError] = useState<string | null>(null);
   const [queryText, setQueryText] = useState('');
   const [debouncedQueryText, setDebouncedQueryText] = useState('');
-  const [filter, setFilter] = useState<MessageFilter>('all');
   const loadMessagesRef = useRef<() => void>(() => {});
 
   const loadMessages = useCallback(async ({ autoSelect = true }: { autoSelect?: boolean } = {}) => {
-    const nextMessages = await fetchMessages(queryParamsFor({ queryText: debouncedQueryText, filter }));
+    const nextMessages = await fetchMessages(queryParamsFor(debouncedQueryText));
     setError(null);
     setMessages(nextMessages);
 
@@ -29,7 +28,7 @@ export function useMessages() {
 
       return null;
     });
-  }, [debouncedQueryText, filter]);
+  }, [debouncedQueryText]);
 
   useEffect(() => {
     loadMessagesRef.current = () => {
@@ -128,42 +127,19 @@ export function useMessages() {
     isClearing,
     error,
     queryText,
-    filter,
     clearMessages,
     loadMessages,
     setQueryText,
-    setFilter,
     selectMessage: setSelectedId
   };
 }
 
-function queryParamsFor({ queryText, filter }: { queryText: string; filter: MessageFilter }): FetchMessagesParams {
+function queryParamsFor(queryText: string): FetchMessagesParams {
   const params: FetchMessagesParams = {};
 
   if (queryText) {
     params.q = queryText;
   }
 
-  if (filter === 'with-attachments') {
-    params.hasAttachments = true;
-  }
-
-  if (filter === 'today') {
-    const { start, end } = localDayBounds(new Date());
-    params.receivedAfter = start;
-    params.receivedBefore = end;
-  }
-
   return params;
-}
-
-function localDayBounds(now: Date): { start: string; end: string } {
-  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const end = new Date(start);
-  end.setDate(start.getDate() + 1);
-
-  return {
-    start: start.toISOString(),
-    end: end.toISOString()
-  };
 }

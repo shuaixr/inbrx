@@ -5,7 +5,9 @@
 [![npm @inbrx/cli](https://img.shields.io/npm/v/%40inbrx%2Fcli?label=%40inbrx%2Fcli)](https://www.npmjs.com/package/@inbrx/cli)
 [![npm @inbrx/web](https://img.shields.io/npm/v/%40inbrx%2Fweb?label=%40inbrx%2Fweb)](https://www.npmjs.com/package/@inbrx/web)
 
-A local SMTP testing environment for developers. Start it, point your application at the local SMTP endpoint, and inspect captured emails in the browser.
+inbrx is a local SMTP testing environment for capturing and inspecting test emails.
+
+![inbrx Web UI](docs/web-ui.png)
 
 ## Quick Start
 
@@ -81,9 +83,3 @@ swaks --to recipient@example.com \
   --header "Subject: test email" \
   --body "Hello from SMTP"
 ```
-
-## Attachments
-
-inbrx stores attachment content separately from message metadata. In file storage mode, messages and attachments are persisted under the operating system's standard user data directory. In memory mode, messages and attachments are removed when the process exits.
-
-Captured attachments appear in the message detail view and can be downloaded from the Web UI.

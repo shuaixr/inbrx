@@ -99,17 +99,6 @@ describe('useMessages', () => {
     await waitFor(() => expect(fetchPaths()).toContain('/api/messages?q=reset+alice'));
   });
 
-  it('requests messages with filter parameters', async () => {
-    const { result } = renderHook(() => useMessages());
-    await waitFor(() => expect(fetchPaths()).toEqual(['/api/messages']));
-
-    act(() => {
-      result.current.setFilter('with-attachments');
-    });
-
-    await waitFor(() => expect(fetchPaths()).toContain('/api/messages?hasAttachments=true'));
-  });
-
   it('reloads messages when mailbox events arrive', async () => {
     messages = [createMessage('message-1')];
     details.set('message-1', createDetail(messages[0]));

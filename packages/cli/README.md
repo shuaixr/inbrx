@@ -1,6 +1,8 @@
 # @inbrx/cli
 
-CLI for capturing local SMTP mail with inbrx. Start it, point your application at the local SMTP endpoint, and inspect captured emails in the browser.
+inbrx is a local SMTP testing environment for capturing and inspecting test emails.
+
+![inbrx Web UI](../../docs/web-ui.png)
 
 ## Quick Start
 

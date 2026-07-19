@@ -9,11 +9,9 @@ export function App() {
     isClearing,
     error,
     queryText,
-    filter,
     clearMessages,
     loadMessages,
     setQueryText,
-    setFilter,
     selectMessage
   } = useMessages();
 
@@ -25,9 +23,7 @@ export function App() {
       queryText={queryText}
       selectedId={selectedId}
       selectedMessage={selectedMessage}
-      filter={filter}
       onClear={() => void clearMessages()}
-      onFilterChange={setFilter}
       onQueryChange={setQueryText}
       onRefresh={() => void loadMessages()}
       onSelect={selectMessage}

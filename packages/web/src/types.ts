@@ -26,5 +26,3 @@ export type MessageDetail = MessageSummary & {
 };
 
 export type ActiveTab = 'body' | 'headers' | 'raw';
-
-export type MessageFilter = 'all' | 'with-attachments' | 'today';

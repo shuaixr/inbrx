@@ -3,18 +3,16 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { formatBytes, formatMessageTime } from '@/lib/format';
-import type { MessageFilter, MessageSummary } from '@/types';
+import type { MessageSummary } from '@/types';
 
 type MessageSidebarProps = {
   messages: MessageSummary[];
   queryText: string;
   selectedId: string | null;
-  filter: MessageFilter;
   isClearing: boolean;
   error: string | null;
   onRefresh(): void;
   onClear(): void;
-  onFilterChange(filter: MessageFilter): void;
   onQueryChange(query: string): void;
   onSelect(messageId: string): void;
 };
@@ -23,28 +21,26 @@ export function MessageSidebar({
   messages,
   queryText,
   selectedId,
-  filter,
   isClearing,
   error,
   onRefresh,
   onClear,
-  onFilterChange,
   onQueryChange,
   onSelect
 }: MessageSidebarProps) {
-  const hasActiveView = queryText.trim().length > 0 || filter !== 'all';
+  const hasActiveSearch = queryText.trim().length > 0;
 
   return (
     <aside className="flex min-w-0 flex-col border-r bg-sidebar text-sidebar-foreground max-[760px]:max-h-[42vh] max-[760px]:border-r-0 max-[760px]:border-b">
       <MailboxHeader isClearing={isClearing} onClear={onClear} onRefresh={onRefresh} />
 
-      <MailboxControls filter={filter} queryText={queryText} onFilterChange={onFilterChange} onQueryChange={onQueryChange} />
+      <MailboxControls queryText={queryText} onQueryChange={onQueryChange} />
 
       <MailboxError error={error} />
 
       <Separator />
 
-      <MessageList hasActiveView={hasActiveView} messages={messages} selectedId={selectedId} onSelect={onSelect} />
+      <MessageList hasActiveSearch={hasActiveSearch} messages={messages} selectedId={selectedId} onSelect={onSelect} />
     </aside>
   );
 }
@@ -59,10 +55,13 @@ function MailboxHeader({
   onRefresh(): void;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 p-4">
-      <div className="flex items-center gap-2">
-        <Inbox className="size-5" aria-hidden="true" />
-        <h1 className="text-lg leading-tight font-semibold">inbrx</h1>
+    <div className="flex items-start justify-between gap-3 p-4">
+      <div className="flex min-w-0 flex-col gap-1">
+        <div className="flex items-center gap-2">
+          <Inbox className="size-5" aria-hidden="true" />
+          <h1 className="text-lg leading-tight font-semibold">inbrx</h1>
+        </div>
+        <p className="text-[12px] leading-4 text-muted-foreground">Local SMTP testing inbox</p>
       </div>
       <div className="flex shrink-0 items-center gap-2">
         <Button type="button" variant="outline" size="sm" onClick={onRefresh}>
@@ -79,18 +78,14 @@ function MailboxHeader({
 }
 
 function MailboxControls({
-  filter,
   queryText,
-  onFilterChange,
   onQueryChange
 }: {
-  filter: MessageFilter;
   queryText: string;
-  onFilterChange(filter: MessageFilter): void;
   onQueryChange(query: string): void;
 }) {
   return (
-    <div className="flex flex-col gap-2 px-4 pb-3">
+    <div className="px-4 pb-4">
       <label className="relative block">
         <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
         <span className="sr-only">Search messages</span>
@@ -102,27 +97,7 @@ function MailboxControls({
           onChange={(event) => onQueryChange(event.currentTarget.value)}
         />
       </label>
-      <div className="grid grid-cols-3 gap-1 rounded-md border bg-background p-1">
-        <FilterButton active={filter === 'all'} label="All" onClick={() => onFilterChange('all')} />
-        <FilterButton active={filter === 'with-attachments'} label="Files" onClick={() => onFilterChange('with-attachments')} />
-        <FilterButton active={filter === 'today'} label="Today" onClick={() => onFilterChange('today')} />
-      </div>
     </div>
-  );
-}
-
-function FilterButton({ active, label, onClick }: { active: boolean; label: string; onClick(): void }) {
-  return (
-    <button
-      className={[
-        'h-7 rounded-sm px-2 text-[12px] font-medium transition-colors',
-        active ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-      ].join(' ')}
-      type="button"
-      onClick={onClick}
-    >
-      {label}
-    </button>
   );
 }
 
@@ -131,12 +106,12 @@ function MailboxError({ error }: { error: string | null }) {
 }
 
 function MessageList({
-  hasActiveView,
+  hasActiveSearch,
   messages,
   selectedId,
   onSelect
 }: {
-  hasActiveView: boolean;
+  hasActiveSearch: boolean;
   messages: MessageSummary[];
   selectedId: string | null;
   onSelect(messageId: string): void;
@@ -145,7 +120,7 @@ function MessageList({
     <ScrollArea className="min-h-0 flex-1">
       <div className="flex flex-col gap-2 p-4">
         {messages.length === 0 ? (
-          <EmptyMailbox hasActiveView={hasActiveView} />
+          <EmptyMailbox hasActiveSearch={hasActiveSearch} />
         ) : (
           messages.map((message) => (
             <MessageListItem
@@ -161,8 +136,15 @@ function MessageList({
   );
 }
 
-function EmptyMailbox({ hasActiveView }: { hasActiveView: boolean }) {
-  return <p className="text-[13px] text-muted-foreground">{hasActiveView ? 'No messages match this view.' : 'No captured messages yet.'}</p>;
+function EmptyMailbox({ hasActiveSearch }: { hasActiveSearch: boolean }) {
+  return (
+    <div className="rounded-lg border border-dashed bg-background p-4">
+      <p className="text-[13px] font-medium">{hasActiveSearch ? 'No matching messages' : 'Waiting for email'}</p>
+      <p className="mt-1 text-[12px] leading-5 text-muted-foreground">
+        {hasActiveSearch ? 'Try a different search.' : 'Send a message to the local SMTP server to inspect it here.'}
+      </p>
+    </div>
+  );
 }
 
 function MessageListItem({
@@ -184,21 +166,18 @@ function MessageListItem({
       onClick={() => onSelect(message.id)}
     >
       <span className="flex min-w-0 items-start justify-between gap-2">
-        <strong className="min-w-0 truncate font-medium">{message.subject || '(No subject)'}</strong>
+        <span className="flex min-w-0 items-center gap-1.5">
+          <strong className="min-w-0 truncate font-medium">{message.subject || '(No subject)'}</strong>
+          {message.attachmentCount > 0 ? (
+            <Paperclip className="size-3.5 shrink-0 text-muted-foreground" aria-label={`${message.attachmentCount} attachments`} />
+          ) : null}
+        </span>
         <span className="shrink-0 text-[12px] text-muted-foreground">{formatMessageTime(message.receivedAt)}</span>
       </span>
       <span className="truncate text-[13px] text-muted-foreground">{message.from || 'unknown'}</span>
       <span className="flex min-w-0 items-center justify-between gap-2 text-[12px] text-muted-foreground">
         <span className="min-w-0 truncate">To {recipientSummary(message.to)}</span>
-        <span className="flex shrink-0 items-center gap-2">
-          {message.attachmentCount > 0 ? (
-            <span className="inline-flex items-center gap-1">
-              <Paperclip className="size-3" aria-hidden="true" />
-              {message.attachmentCount}
-            </span>
-          ) : null}
-          <span>{formatBytes(message.rawSizeBytes)}</span>
-        </span>
+        <span className="shrink-0">{formatBytes(message.rawSizeBytes)}</span>
       </span>
     </button>
   );
