@@ -1,22 +1,27 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Download } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatBytes } from '@/lib/format';
-import type { ActiveTab, MessageAttachment, MessageDetail as MessageDetailType } from '@/types';
+import type { MessageAttachment, MessageDetail as MessageDetailType, MessageViewTab } from '@/types';
 
 type MessageDetailProps = {
   message: MessageDetailType | null;
 };
 
-const tabPanelClass = 'min-h-0 flex-1 overflow-auto rounded-lg border bg-card p-4 text-card-foreground';
+type MessageViewTabs = [MessageViewTab, ...MessageViewTab[]];
+
+const tabPanelClass = 'min-h-0 flex-1 overflow-auto rounded-b-lg border-x border-b bg-card p-4 text-card-foreground';
 
 export function MessageDetail({ message }: MessageDetailProps) {
-  const [activeTab, setActiveTab] = useState<ActiveTab>('body');
+  const [activeTab, setActiveTab] = useState<MessageViewTab | null>(null);
 
   if (!message) {
     return <EmptyMessageDetail />;
   }
+
+  const availableTabs = tabsForMessage(message);
+  const selectedTab = activeTab && availableTabs.includes(activeTab) ? activeTab : availableTabs[0];
 
   return (
     <section className="min-w-0 p-6">
@@ -25,10 +30,10 @@ export function MessageDetail({ message }: MessageDetailProps) {
 
         <Tabs
           className="min-h-0 flex-1"
-          value={activeTab}
-          onValueChange={(value: string) => setActiveTab(value as ActiveTab)}
+          value={selectedTab}
+          onValueChange={(value: string) => setActiveTab(value as MessageViewTab)}
         >
-          <MessageContentTabs message={message} />
+          <MessageContentTabs availableTabs={availableTabs} message={message} selectedTab={selectedTab} />
         </Tabs>
       </article>
     </section>
@@ -59,33 +64,47 @@ function MessageHeader({ message }: { message: MessageDetailType }) {
   );
 }
 
-function MessageContentTabs({ message }: { message: MessageDetailType }) {
-  const selectedBody = useMemo(() => {
-    if (message.html) {
-      return (
-        <iframe
-          className="h-full min-h-[420px] w-full border-0"
-          title="HTML email preview"
-          sandbox=""
-          srcDoc={message.html}
-        />
-      );
-    }
-
-    return <pre className="whitespace-pre-wrap break-words font-mono text-[13px] leading-6">{message.text || ''}</pre>;
-  }, [message]);
-
+function MessageContentTabs({
+  availableTabs,
+  message,
+  selectedTab
+}: {
+  availableTabs: MessageViewTabs;
+  message: MessageDetailType;
+  selectedTab: MessageViewTab;
+}) {
   return (
     <>
-      <TabsList variant="line">
-        <TabsTrigger value="body">Body</TabsTrigger>
-        <TabsTrigger value="headers">Headers</TabsTrigger>
-        <TabsTrigger value="raw">Raw</TabsTrigger>
+      <TabsList aria-label="Message views" variant="line">
+        {availableTabs.map((tab) => (
+          <TabsTrigger className="flex-none after:hidden" key={tab} value={tab}>
+            <span className={tab === selectedTab ? 'border-b-2 border-foreground pb-1' : 'border-b-2 border-transparent pb-1'}>
+              {tabLabels[tab]}
+            </span>
+          </TabsTrigger>
+        ))}
       </TabsList>
 
-      <TabsContent className={tabPanelClass} value="body">
-        {selectedBody}
-      </TabsContent>
+      {message.html ? (
+        <TabsContent className={tabPanelClass} value="html-preview">
+          <iframe
+            className="h-full min-h-[420px] w-full border-0"
+            title="HTML email preview"
+            sandbox=""
+            srcDoc={message.html}
+          />
+        </TabsContent>
+      ) : null}
+      {message.text ? (
+        <TabsContent className={tabPanelClass} value="text">
+          <pre className="whitespace-pre-wrap break-words font-mono text-[13px] leading-6">{message.text}</pre>
+        </TabsContent>
+      ) : null}
+      {message.html ? (
+        <TabsContent className={tabPanelClass} value="html-source">
+          <pre className="whitespace-pre-wrap break-words font-mono text-[13px] leading-6">{message.html}</pre>
+        </TabsContent>
+      ) : null}
       <TabsContent className={tabPanelClass} value="headers">
         <pre className="whitespace-pre-wrap break-words font-mono text-[13px] leading-6">
           {JSON.stringify(message.headers, null, 2)}
@@ -96,6 +115,30 @@ function MessageContentTabs({ message }: { message: MessageDetailType }) {
       </TabsContent>
     </>
   );
+}
+
+const tabLabels: Record<MessageViewTab, string> = {
+  'html-preview': 'HTML Preview',
+  text: 'Text',
+  'html-source': 'HTML Source',
+  headers: 'Headers',
+  raw: 'Raw'
+};
+
+function tabsForMessage(message: MessageDetailType): MessageViewTabs {
+  if (message.html && message.text) {
+    return ['html-preview', 'text', 'html-source', 'headers', 'raw'];
+  }
+
+  if (message.html) {
+    return ['html-preview', 'html-source', 'headers', 'raw'];
+  }
+
+  if (message.text) {
+    return ['text', 'headers', 'raw'];
+  }
+
+  return ['headers', 'raw'];
 }
 
 function AttachmentList({ attachments, messageId }: { attachments: MessageAttachment[]; messageId: string }) {

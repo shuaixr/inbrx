@@ -25,4 +25,4 @@ export type MessageDetail = MessageSummary & {
   raw: string;
 };
 
-export type ActiveTab = 'body' | 'headers' | 'raw';
+export type MessageViewTab = 'html-preview' | 'text' | 'html-source' | 'headers' | 'raw';
