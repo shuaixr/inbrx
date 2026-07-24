@@ -108,4 +108,53 @@ describe('parseMessage', () => {
       content: Buffer.from('attached text')
     });
   });
+
+  it('captures inline attachment content ids', async () => {
+    const imageContent = Buffer.from('inline image');
+    const raw = [
+      'From: sender@example.com',
+      'To: recipient@example.com',
+      'Subject: Inline image',
+      'Content-Type: multipart/related; boundary="related-boundary"',
+      '',
+      '--related-boundary',
+      'Content-Type: text/html; charset=utf-8',
+      '',
+      '<img src="cid:logo@example">',
+      '--related-boundary',
+      'Content-Type: image/png; name="logo.png"',
+      'Content-Disposition: inline; filename="logo.png"',
+      'Content-Transfer-Encoding: base64',
+      'Content-ID: <logo@example>',
+      '',
+      imageContent.toString('base64'),
+      '--related-boundary--'
+    ].join('\r\n');
+
+    const attachmentStore = createMemoryAttachmentStore();
+    const message = await parseMessage({
+      raw,
+      envelope: {
+        from: null,
+        to: []
+      },
+      smtp: createCapturedSmtpSession(),
+      attachmentStore
+    });
+
+    expect(message.html).toContain('<img src="cid:logo@example">');
+    expect(message.attachments).toEqual([
+      {
+        id: expect.any(String),
+        filename: 'logo.png',
+        contentType: 'image/png',
+        sizeBytes: imageContent.byteLength,
+        storageKey: `${message.id}/${message.attachments[0]?.id}`,
+        contentId: '<logo@example>'
+      }
+    ]);
+    await expect(attachmentStore.get(message.id, message.attachments[0]?.id || '')).resolves.toMatchObject({
+      content: imageContent
+    });
+  });
 });

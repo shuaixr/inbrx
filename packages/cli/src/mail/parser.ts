@@ -20,7 +20,7 @@ export async function parseMessage({
   smtp: CapturedSmtpSession;
   attachmentStore: AttachmentStore;
 }): Promise<CapturedMessage> {
-  const parsed = await simpleParser(Buffer.from(raw));
+  const parsed = await simpleParser(Buffer.from(raw), { skipImageLinks: true });
   const id = randomUUID();
   const attachments: CapturedAttachment[] = [];
 

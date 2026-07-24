@@ -60,6 +60,32 @@ describe('MessageDetail', () => {
     expect(screen.queryByRole('tab', { name: 'HTML Source' })).toBeNull();
     expect(screen.getByText('Only text')).not.toBeNull();
   });
+
+  it('resolves inline cid images in preview while keeping HTML source unchanged', () => {
+    render(
+      <MessageDetail
+        message={createMessageDetail({
+          html: '<img src="cid:logo@example">',
+          attachments: [
+            {
+              id: 'attachment-1',
+              filename: 'logo.png',
+              contentType: 'image/png',
+              sizeBytes: 128,
+              contentId: '<logo@example>'
+            }
+          ]
+        })}
+      />
+    );
+
+    expect(screen.getByTitle('HTML email preview').getAttribute('srcdoc')).toContain(
+      'src="/api/messages/message-1/attachments/attachment-1"'
+    );
+
+    selectTab('HTML Source');
+    expect(screen.getByText('<img src="cid:logo@example">')).not.toBeNull();
+  });
 });
 
 function tabNames(): string[] {

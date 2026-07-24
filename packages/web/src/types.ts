@@ -13,6 +13,7 @@ export type MessageAttachment = {
   filename: string | null;
   contentType: string;
   sizeBytes: number;
+  contentId?: string;
 };
 
 export type MessageDetail = MessageSummary & {

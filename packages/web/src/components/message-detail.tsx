@@ -3,6 +3,7 @@ import { Download } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatBytes } from '@/lib/format';
+import { resolveInlineCidUrls } from '@/lib/inline-cid';
 import type { MessageAttachment, MessageDetail as MessageDetailType, MessageViewTab } from '@/types';
 
 type MessageDetailProps = {
@@ -91,7 +92,7 @@ function MessageContentTabs({
             className="h-full min-h-[420px] w-full border-0"
             title="HTML email preview"
             sandbox=""
-            srcDoc={message.html}
+            srcDoc={resolveInlineCidUrls({ html: message.html, messageId: message.id, attachments: message.attachments })}
           />
         </TabsContent>
       ) : null}
