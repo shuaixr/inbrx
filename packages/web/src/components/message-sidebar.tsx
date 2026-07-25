@@ -1,39 +1,28 @@
 import { type FormEvent, type KeyboardEvent, type MouseEvent, useState } from 'react';
 import { Inbox, Paperclip, Plug, RefreshCw, Search, Trash2 } from 'lucide-react';
 import { ConnectDialog } from '@/components/connect-dialog';
+import { useMessageMailbox } from '@/contexts/message-mailbox-context';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { formatBytes, formatMessageTime } from '@/lib/format';
 import type { MessageSummary } from '@/types';
 
-type MessageSidebarProps = {
-  messages: MessageSummary[];
-  queryText: string;
-  selectedId: string | null;
-  isClearing: boolean;
-  deletingMessageId: string | null;
-  error: string | null;
-  onRefresh(): void;
-  onClear(): void;
-  onDeleteMessage(messageId: string): void;
-  onQueryChange(query: string): void;
-  onSelect(messageId: string): void;
-};
+export function MessageSidebar() {
+  const {
+    messages,
+    queryText,
+    selectedId,
+    isClearing,
+    error,
+    deletingMessageId,
+    clearMessages,
+    deleteMessage,
+    loadMessages,
+    setQueryText,
+    selectMessage
+  } = useMessageMailbox();
 
-export function MessageSidebar({
-  messages,
-  queryText,
-  selectedId,
-  isClearing,
-  deletingMessageId,
-  error,
-  onRefresh,
-  onClear,
-  onDeleteMessage,
-  onQueryChange,
-  onSelect
-}: MessageSidebarProps) {
   const hasActiveSearch = queryText.trim().length > 0;
   const [messageToDelete, setMessageToDelete] = useState<MessageSummary | null>(null);
 
@@ -53,15 +42,23 @@ export function MessageSidebar({
       return;
     }
 
-    onDeleteMessage(messageToDelete.id);
+    deleteMessage(messageToDelete.id);
     closeDeleteDialog();
   };
 
   return (
     <aside className="flex min-w-0 flex-col border-r bg-sidebar text-sidebar-foreground max-[760px]:max-h-[42vh] max-[760px]:border-r-0 max-[760px]:border-b">
-      <MailboxHeader isClearing={isClearing} onClear={onClear} onRefresh={onRefresh} />
+      <MailboxHeader
+        isClearing={isClearing}
+        onClear={() => {
+          void clearMessages();
+        }}
+        onRefresh={() => {
+          void loadMessages();
+        }}
+      />
 
-      <MailboxControls queryText={queryText} onQueryChange={onQueryChange} />
+      <MailboxControls queryText={queryText} onQueryChange={setQueryText} />
 
       <MailboxError error={error} />
 
@@ -73,7 +70,7 @@ export function MessageSidebar({
         selectedId={selectedId}
         deletingMessageId={deletingMessageId}
         onRequestDelete={requestDeleteMessage}
-        onSelect={onSelect}
+        onSelect={selectMessage}
       />
 
       <MessageDeleteDialog
