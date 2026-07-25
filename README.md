@@ -27,6 +27,30 @@ Use memory-only storage for throwaway sessions:
 npx @inbrx/cli --storage memory
 ```
 
+## Docker
+
+Pull the published image from GitHub Container Registry:
+
+```bash
+docker pull ghcr.io/shuaixr/inbrx:latest
+```
+
+Build the image locally:
+
+```bash
+docker build -t inbrx .
+```
+
+Run inbrx with file-backed storage mounted at `/data`:
+
+```bash
+docker run --rm \
+  -p 2525:2525 \
+  -p 3000:3000 \
+  -v inbrx-data:/data \
+  ghcr.io/shuaixr/inbrx:latest
+```
+
 ## Options
 
 ```bash

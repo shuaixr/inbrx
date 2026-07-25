@@ -22,6 +22,7 @@ export default defineConfig({
           label: 'Start',
           items: [
             { label: 'Quick Start', slug: 'quick-start' },
+            { label: 'Docker', slug: 'docker' },
             { label: 'Connect Your App', slug: 'connect-your-app' }
           ]
         },

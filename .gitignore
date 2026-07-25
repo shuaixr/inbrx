@@ -144,3 +144,5 @@ vite.config.ts.timestamp-*
 
 # Astro files
 .astro/
+
+agent.md

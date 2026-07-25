@@ -1,0 +1,14 @@
+.git
+.github
+.agents
+.codex
+node_modules
+packages/*/node_modules
+packages/*/dist
+packages/*/coverage
+coverage
+.DS_Store
+*.log
+npm-debug.log*
+Dockerfile
+.dockerignore
