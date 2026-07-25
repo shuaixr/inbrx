@@ -1,0 +1,12 @@
+services:
+  inbrx:
+    image: ghcr.io/shuaixr/inbrx:latest
+    ports:
+      - "2525:2525"
+      - "3000:3000"
+    volumes:
+      - inbrx-data:/data
+    restart: unless-stopped
+
+volumes:
+  inbrx-data:

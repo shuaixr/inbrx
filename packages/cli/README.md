@@ -46,6 +46,8 @@ docker run --rm \
   ghcr.io/shuaixr/inbrx:latest
 ```
 
+A standalone Compose example is available at `examples/docker-compose.yml`.
+
 ## Options
 
 ```bash
