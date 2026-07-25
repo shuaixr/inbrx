@@ -59,3 +59,13 @@ export async function clearMessages(): Promise<void> {
     throw new Error(`Failed to clear messages (${response.status})`);
   }
 }
+
+export async function deleteMessage(id: string): Promise<void> {
+  const response = await fetch(`/api/messages/${encodeURIComponent(id)}`, {
+    method: 'DELETE'
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to delete message (${response.status})`);
+  }
+}

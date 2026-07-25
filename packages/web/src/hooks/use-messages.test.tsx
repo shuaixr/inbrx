@@ -47,12 +47,14 @@ describe('useMessages', () => {
   let messages: MessageSummary[];
   let details: Map<string, MessageDetail>;
   let deleted = false;
+  let deletedMessageIds: string[];
   let fetchCalls: FetchCall[];
 
   beforeEach(() => {
     messages = [];
     details = new Map();
     deleted = false;
+    deletedMessageIds = [];
     fetchCalls = [];
     MockEventSource.instances = [];
 
@@ -206,6 +208,28 @@ describe('useMessages', () => {
     expect(fetchCalls.some((call) => pathOnly(call.input) === '/api/messages' && call.init?.method === 'DELETE')).toBe(true);
   });
 
+  it('deletes a single message and reloads messages', async () => {
+    const first = createMessage('message-1', { subject: 'First' });
+    const second = createMessage('message-2', { subject: 'Second' });
+    messages = [first, second];
+    details.set(first.id, createDetail(first));
+    details.set(second.id, createDetail(second, { text: 'Second body' }));
+
+    const { result } = renderHook(() => useMessages());
+    await waitFor(() => expect(result.current.selectedId).toBe('message-1'));
+
+    messages = [second];
+
+    await act(async () => {
+      await result.current.deleteMessage('message-1');
+    });
+
+    expect(deletedMessageIds).toEqual(['message-1']);
+    expect(result.current.messages).toEqual([second]);
+    expect(result.current.selectedId).toBe('message-2');
+    expect(result.current.selectedMessage?.text).toBe('Second body');
+  });
+
   it('keeps state intact when EventSource reports an error', async () => {
     const first = createMessage('message-1');
     messages = [first];
@@ -264,11 +288,17 @@ describe('useMessages', () => {
       return jsonResponse({});
     }
 
+    const messageMatch = path.match(/^\/api\/messages\/([^/]+)$/);
+    if (messageMatch && init?.method === 'DELETE') {
+      const id = decodeURIComponent(messageMatch[1] ?? '');
+      deletedMessageIds.push(id);
+      return jsonResponse({ deleted: true });
+    }
+
     if (path === '/api/messages') {
       return jsonResponse({ messages });
     }
 
-    const messageMatch = path.match(/^\/api\/messages\/([^/]+)$/);
     if (messageMatch) {
       const id = decodeURIComponent(messageMatch[1] ?? '');
       const detail = details.get(id);

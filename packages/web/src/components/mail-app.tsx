@@ -8,9 +8,11 @@ type MailAppProps = {
   selectedId: string | null;
   selectedMessage: MessageDetailType | null;
   isClearing: boolean;
+  deletingMessageId: string | null;
   error: string | null;
   onRefresh(): void;
   onClear(): void;
+  onDeleteMessage(messageId: string): void;
   onQueryChange(query: string): void;
   onSelect(messageId: string): void;
 };
@@ -21,9 +23,11 @@ export function MailApp({
   selectedId,
   selectedMessage,
   isClearing,
+  deletingMessageId,
   error,
   onRefresh,
   onClear,
+  onDeleteMessage,
   onQueryChange,
   onSelect
 }: MailAppProps) {
@@ -36,9 +40,11 @@ export function MailApp({
           messages={messages}
           queryText={queryText}
           selectedId={selectedId}
+          deletingMessageId={deletingMessageId}
           onQueryChange={onQueryChange}
           onClear={onClear}
           onRefresh={onRefresh}
+          onDeleteMessage={onDeleteMessage}
           onSelect={onSelect}
         />
       }

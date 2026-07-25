@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { clearMessages as clearMessagesRequest, fetchMessage, fetchMessages, type FetchMessagesParams } from '@/lib/messages-api';
+import {
+  clearMessages as clearMessagesRequest,
+  deleteMessage as deleteMessageRequest,
+  fetchMessage,
+  fetchMessages,
+  type FetchMessagesParams
+} from '@/lib/messages-api';
 import type { MessageDetail, MessageSummary } from '@/types';
 
 export function useMessages() {
@@ -7,6 +13,7 @@ export function useMessages() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedMessage, setSelectedMessage] = useState<MessageDetail | null>(null);
   const [isClearing, setIsClearing] = useState(false);
+  const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [queryText, setQueryText] = useState('');
   const [debouncedQueryText, setDebouncedQueryText] = useState('');
@@ -57,6 +64,27 @@ export function useMessages() {
       setIsClearing(false);
     }
   }, [isClearing, loadMessages]);
+
+  const deleteMessage = useCallback(
+    async (messageId: string) => {
+      if (deletingMessageId) {
+        return;
+      }
+
+      setDeletingMessageId(messageId);
+      setError(null);
+
+      try {
+        await deleteMessageRequest(messageId);
+        await loadMessages();
+      } catch (deleteError) {
+        setError(deleteError instanceof Error ? deleteError.message : 'Failed to delete message');
+      } finally {
+        setDeletingMessageId(null);
+      }
+    },
+    [deletingMessageId, loadMessages]
+  );
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -125,9 +153,11 @@ export function useMessages() {
     selectedId,
     selectedMessage,
     isClearing,
+    deletingMessageId,
     error,
     queryText,
     clearMessages,
+    deleteMessage,
     loadMessages,
     setQueryText,
     selectMessage: setSelectedId

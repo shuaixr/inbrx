@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { type FormEvent, type KeyboardEvent, type MouseEvent, useState } from 'react';
 import { Inbox, Paperclip, Plug, RefreshCw, Search, Trash2 } from 'lucide-react';
 import { ConnectDialog } from '@/components/connect-dialog';
 import { Button } from '@/components/ui/button';
@@ -12,9 +12,11 @@ type MessageSidebarProps = {
   queryText: string;
   selectedId: string | null;
   isClearing: boolean;
+  deletingMessageId: string | null;
   error: string | null;
   onRefresh(): void;
   onClear(): void;
+  onDeleteMessage(messageId: string): void;
   onQueryChange(query: string): void;
   onSelect(messageId: string): void;
 };
@@ -24,13 +26,36 @@ export function MessageSidebar({
   queryText,
   selectedId,
   isClearing,
+  deletingMessageId,
   error,
   onRefresh,
   onClear,
+  onDeleteMessage,
   onQueryChange,
   onSelect
 }: MessageSidebarProps) {
   const hasActiveSearch = queryText.trim().length > 0;
+  const [messageToDelete, setMessageToDelete] = useState<MessageSummary | null>(null);
+
+  const requestDeleteMessage = (messageId: string) => {
+    const target = messages.find((message) => message.id === messageId);
+    if (target) {
+      setMessageToDelete(target);
+    }
+  };
+
+  const closeDeleteDialog = () => {
+    setMessageToDelete(null);
+  };
+
+  const confirmDeleteMessage = () => {
+    if (!messageToDelete) {
+      return;
+    }
+
+    onDeleteMessage(messageToDelete.id);
+    closeDeleteDialog();
+  };
 
   return (
     <aside className="flex min-w-0 flex-col border-r bg-sidebar text-sidebar-foreground max-[760px]:max-h-[42vh] max-[760px]:border-r-0 max-[760px]:border-b">
@@ -42,7 +67,21 @@ export function MessageSidebar({
 
       <Separator />
 
-      <MessageList hasActiveSearch={hasActiveSearch} messages={messages} selectedId={selectedId} onSelect={onSelect} />
+      <MessageList
+        hasActiveSearch={hasActiveSearch}
+        messages={messages}
+        selectedId={selectedId}
+        deletingMessageId={deletingMessageId}
+        onRequestDelete={requestDeleteMessage}
+        onSelect={onSelect}
+      />
+
+      <MessageDeleteDialog
+        message={messageToDelete}
+        deletingMessageId={deletingMessageId}
+        onCancel={closeDeleteDialog}
+        onConfirm={confirmDeleteMessage}
+      />
     </aside>
   );
 }
@@ -122,11 +161,15 @@ function MessageList({
   hasActiveSearch,
   messages,
   selectedId,
+  deletingMessageId,
+  onRequestDelete,
   onSelect
 }: {
   hasActiveSearch: boolean;
   messages: MessageSummary[];
   selectedId: string | null;
+  deletingMessageId: string | null;
+  onRequestDelete(messageId: string): void;
   onSelect(messageId: string): void;
 }) {
   return (
@@ -140,6 +183,8 @@ function MessageList({
               isActive={message.id === selectedId}
               key={message.id}
               message={message}
+              deletingMessageId={deletingMessageId}
+              onRequestDelete={onRequestDelete}
               onSelect={onSelect}
             />
           ))
@@ -163,20 +208,39 @@ function EmptyMailbox({ hasActiveSearch }: { hasActiveSearch: boolean }) {
 function MessageListItem({
   message,
   isActive,
+  onRequestDelete,
+  deletingMessageId,
   onSelect
 }: {
   message: MessageSummary;
   isActive: boolean;
+  onRequestDelete(messageId: string): void;
+  deletingMessageId: string | null;
   onSelect(messageId: string): void;
 }) {
+  const isDeleting = deletingMessageId === message.id;
+
+  const openMessage = () => {
+    onSelect(message.id);
+  };
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      onSelect(message.id);
+    }
+  };
+
   return (
-    <button
+    <div
       className={[
-        'flex min-h-[68px] w-full flex-col items-stretch gap-1 overflow-hidden rounded-lg border px-3 py-2 text-left text-sm transition-colors',
+        'flex min-h-[60px] w-full flex-col items-stretch gap-1 overflow-hidden rounded-lg border px-3 py-2 text-left text-sm transition-colors',
         isActive ? 'border-primary/40 bg-primary/5' : 'border-border bg-background hover:bg-muted'
       ].join(' ')}
-      type="button"
-      onClick={() => onSelect(message.id)}
+      role="button"
+      tabIndex={0}
+      onClick={openMessage}
+      onKeyDown={handleKeyDown}
     >
       <span className="flex min-w-0 items-start justify-between gap-2">
         <span className="flex min-w-0 items-center gap-1.5">
@@ -190,9 +254,85 @@ function MessageListItem({
       <span className="truncate text-[13px] text-muted-foreground">{message.from || 'unknown'}</span>
       <span className="flex min-w-0 items-center justify-between gap-2 text-[12px] text-muted-foreground">
         <span className="min-w-0 truncate">To {recipientSummary(message.to)}</span>
-        <span className="shrink-0">{formatBytes(message.rawSizeBytes)}</span>
+        <span className="flex shrink-0 items-center gap-2">
+          <span className="shrink-0">{formatBytes(message.rawSizeBytes)}</span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="xs"
+            disabled={isDeleting}
+            onClick={(event) => {
+              event.stopPropagation();
+              onRequestDelete(message.id);
+            }}
+            onMouseDown={(event) => {
+              event.stopPropagation();
+            }}
+          >
+            <Trash2 data-icon="inline-start" />
+            {isDeleting ? 'Deleting...' : 'Delete'}
+          </Button>
+        </span>
       </span>
-    </button>
+    </div>
+  );
+}
+
+function MessageDeleteDialog({
+  message,
+  deletingMessageId,
+  onCancel,
+  onConfirm
+}: {
+  message: MessageSummary | null;
+  deletingMessageId: string | null;
+  onCancel(): void;
+  onConfirm(): void;
+}) {
+  if (!message) {
+    return null;
+  }
+
+  const isDeleting = deletingMessageId === message.id;
+
+  const closeOnBackdrop = (event: MouseEvent<HTMLDialogElement>) => {
+    if (event.target === event.currentTarget) {
+      onCancel();
+    }
+  };
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    onConfirm();
+  };
+
+  return (
+    <dialog
+      open
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={`delete-message-${message.id}`}
+      className="fixed left-1/2 top-1/2 z-50 max-h-[90vh] w-[calc(100%-2rem)] max-w-[430px] -translate-x-1/2 -translate-y-1/2 rounded-lg border bg-background p-4 shadow-2xl"
+      onMouseDown={closeOnBackdrop}
+      onCancel={(event) => {
+        event.preventDefault();
+        onCancel();
+      }}
+    >
+      <form method="dialog" onSubmit={handleSubmit} className="flex min-h-0 flex-col gap-4">
+        <p id={`delete-message-${message.id}`} className="text-sm">
+          Delete message {message.subject ? `"${message.subject}"` : 'without a subject'}?
+        </p>
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="outline" size="sm" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button type="submit" variant="destructive" size="sm" disabled={isDeleting}>
+            {isDeleting ? 'Deleting...' : 'Delete'}
+          </Button>
+        </div>
+      </form>
+    </dialog>
   );
 }
 
