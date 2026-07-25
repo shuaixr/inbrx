@@ -1,6 +1,6 @@
 {
   "name": "inbrx-workspace",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "A local SMTP testing environment for developers.",
   "private": true,
   "type": "module",
