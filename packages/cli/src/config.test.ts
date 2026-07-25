@@ -10,7 +10,8 @@ const ENV_KEYS = [
   'SMTP_TEST_HTTP_HOST',
   'SMTP_TEST_HTTP_PORT',
   'SMTP_TEST_MAX_MESSAGES',
-  'INBRX_STORAGE'
+  'INBRX_STORAGE',
+  'INBRX_DATA_DIR'
 ] as const;
 
 describe('loadConfig', () => {
@@ -34,6 +35,7 @@ describe('loadConfig', () => {
     process.env.SMTP_TEST_HTTP_PORT = '3001';
     process.env.SMTP_TEST_MAX_MESSAGES = '25';
     process.env.INBRX_STORAGE = 'memory';
+    process.env.INBRX_DATA_DIR = '/tmp/inbrx-data';
 
     expect(loadConfig()).toEqual({
       smtpHost: '0.0.0.0',
@@ -44,7 +46,8 @@ describe('loadConfig', () => {
       httpHost: 'localhost',
       httpPort: 3001,
       maxMessages: 25,
-      storage: 'memory'
+      storage: 'memory',
+      dataDir: '/tmp/inbrx-data'
     });
   });
 
@@ -52,6 +55,12 @@ describe('loadConfig', () => {
     process.env.SMTP_TEST_SMTP_PORT = '2526';
 
     expect(loadConfig({ smtpPort: '2527' }).smtpPort).toBe(2527);
+  });
+
+  it('prefers explicit data directory overrides over environment variables', () => {
+    process.env.INBRX_DATA_DIR = '/tmp/from-env';
+
+    expect(loadConfig({ dataDir: '/tmp/from-cli' }).dataDir).toBe('/tmp/from-cli');
   });
 
   it('rejects non-integer numeric values', () => {

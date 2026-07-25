@@ -16,9 +16,10 @@ CLI options take precedence over environment variables.
 | `SMTP_TEST_HTTP_PORT` | HTTP API and Web UI port. |
 | `SMTP_TEST_MAX_MESSAGES` | Maximum retained messages. |
 | `INBRX_STORAGE` | Storage mode: `file` or `memory`. |
+| `INBRX_DATA_DIR` | Directory for file storage. |
 
 ## Example
 
 ```bash
-INBRX_STORAGE=memory SMTP_TEST_MAX_MESSAGES=100 npx @inbrx/cli
+INBRX_DATA_DIR=./inbrx-data SMTP_TEST_MAX_MESSAGES=100 npx @inbrx/cli
 ```

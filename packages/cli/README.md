@@ -34,7 +34,8 @@ inbrx start \
   --http-host 127.0.0.1 \
   --http-port 3000 \
   --max-messages 500 \
-  --storage file
+  --storage file \
+  --data-dir ./inbrx-data
 ```
 
 Environment variables:
@@ -48,6 +49,7 @@ Environment variables:
 - `SMTP_TEST_HTTP_PORT`
 - `SMTP_TEST_MAX_MESSAGES`
 - `INBRX_STORAGE=file|memory`
+- `INBRX_DATA_DIR`
 
 ## STARTTLS
 

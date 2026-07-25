@@ -8,6 +8,7 @@ export type AppConfig = {
   httpPort: number;
   maxMessages: number;
   storage: StorageMode;
+  dataDir: string;
 };
 
 export type StorageMode = 'file' | 'memory';

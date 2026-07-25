@@ -1,7 +1,6 @@
 import { createMailboxEvents, type MailboxEvents } from './events/mailbox-events.js';
 import { createHttpServer, toConnectionSettings } from './http/server.js';
 import { createFileAttachmentStore, createMemoryAttachmentStore } from './store/attachment-store.js';
-import { getDefaultDataDir } from './store/data-dir.js';
 import { createFileMessageStore } from './store/file-store.js';
 import { createMemoryStore } from './store/memory-store.js';
 import { createSmtpServer } from './smtp/server.js';
@@ -45,12 +44,11 @@ function createStores(config: AppConfig, events: MailboxEvents): { store: Messag
     };
   }
 
-  const dataDir = getDefaultDataDir();
-  const attachmentStore = createFileAttachmentStore({ rootDir: dataDir });
+  const attachmentStore = createFileAttachmentStore({ rootDir: config.dataDir });
   return {
     attachmentStore,
     store: createFileMessageStore({
-      rootDir: dataDir,
+      rootDir: config.dataDir,
       maxMessages: config.maxMessages,
       onDelete: createDeleteHandler(attachmentStore, events)
     })

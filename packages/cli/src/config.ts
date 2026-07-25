@@ -1,4 +1,5 @@
 import type { AppConfig, StorageMode } from './types.js';
+import { getDefaultDataDir } from './store/data-dir.js';
 
 type ConfigValue = string | number | boolean | null | undefined;
 
@@ -13,7 +14,8 @@ const DEFAULTS: AppConfig = {
   httpHost: '127.0.0.1',
   httpPort: 3000,
   maxMessages: 500,
-  storage: 'file'
+  storage: 'file',
+  dataDir: getDefaultDataDir()
 };
 
 export function loadConfig(overrides: ConfigOverrides = {}): AppConfig {
@@ -43,7 +45,8 @@ export function loadConfig(overrides: ConfigOverrides = {}): AppConfig {
     httpHost: readString(overrides.httpHost, process.env.SMTP_TEST_HTTP_HOST, DEFAULTS.httpHost),
     httpPort: readNumber(overrides.httpPort, process.env.SMTP_TEST_HTTP_PORT, DEFAULTS.httpPort),
     maxMessages: readNumber(overrides.maxMessages, process.env.SMTP_TEST_MAX_MESSAGES, DEFAULTS.maxMessages),
-    storage: readStorageMode(overrides.storage, process.env.INBRX_STORAGE, DEFAULTS.storage)
+    storage: readStorageMode(overrides.storage, process.env.INBRX_STORAGE, DEFAULTS.storage),
+    dataDir: readString(overrides.dataDir, process.env.INBRX_DATA_DIR, DEFAULTS.dataDir)
   };
 
   assertPort(config.smtpPort, 'SMTP port');

@@ -28,6 +28,7 @@ inbrx --storage memory
 | `--http-port <port>` | `3000` | HTTP API and Web UI port. |
 | `--max-messages <count>` | `500` | Maximum retained messages. |
 | `--storage <mode>` | `file` | Storage mode: `file` or `memory`. |
+| `--data-dir <path>` | OS data directory | Directory for file storage. |
 
 ## Example
 
@@ -38,5 +39,6 @@ inbrx start \
   --http-host 127.0.0.1 \
   --http-port 3000 \
   --max-messages 500 \
-  --storage file
+  --storage file \
+  --data-dir ./inbrx-data
 ```

@@ -99,7 +99,8 @@ export function createHttpApp({
     httpHost: '127.0.0.1',
     httpPort: 3000,
     maxMessages: 500,
-    storage: 'memory'
+    storage: 'memory',
+    dataDir: '/tmp/inbrx'
   }),
   events = createMailboxEvents()
 }: {

@@ -20,6 +20,14 @@ npx @inbrx/cli --storage file
 
 Use it when you want messages to remain available across process restarts.
 
+Use `--data-dir` to choose where file-backed messages and attachments are stored:
+
+```bash
+npx @inbrx/cli --storage file --data-dir ./inbrx-data
+```
+
+This is useful for containers, shared development environments, or test runs that need a predictable storage path.
+
 ## Memory storage
 
 Memory storage is useful for short-lived test runs:
