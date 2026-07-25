@@ -159,6 +159,23 @@ describe('createHttpApp', () => {
     await expect(response.json()).resolves.toEqual({ message: { ...message, attachmentCount: 0 } });
   });
 
+  it('downloads raw message as eml', async () => {
+    const store = createMemoryStore({ maxMessages: 10 });
+    const message = createCapturedMessage({
+      id: 'message-1',
+      raw: 'From: test@example.com\r\nTo: recipient@example.com\r\n\r\nhello'
+    });
+    await store.add(message);
+    const app = createTestApp(store);
+
+    const response = await app.request('/api/messages/message-1/raw');
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toBe('message/rfc822; charset=utf-8');
+    expect(response.headers.get('content-disposition')).toBe('attachment; filename="message-1.eml"');
+    await expect(response.text()).resolves.toBe('From: test@example.com\r\nTo: recipient@example.com\r\n\r\nhello');
+  });
+
   it('returns 404 for a missing message', async () => {
     const app = createTestApp();
 

@@ -148,6 +148,20 @@ export function createHttpApp({
     return c.json({ message: toMessageDetail(message) });
   });
 
+  app.get('/api/messages/:id/raw', async (c) => {
+    const message = await store.get(c.req.param('id'));
+    if (!message) {
+      return c.json({ error: 'Message not found' }, 404);
+    }
+
+    return new Response(message.raw, {
+      headers: {
+        'content-type': 'message/rfc822; charset=utf-8',
+        'content-disposition': contentDispositionFor(`${message.id}.eml`)
+      }
+    });
+  });
+
   app.get('/api/messages/:id/attachments/:attachmentId', async (c) => {
     const messageId = c.req.param('id');
     const attachmentId = c.req.param('attachmentId');

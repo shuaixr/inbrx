@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Download } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatBytes } from '@/lib/format';
 import { resolveInlineCidUrls } from '@/lib/inline-cid';
@@ -53,13 +54,25 @@ function EmptyMessageDetail() {
 }
 
 function MessageHeader({ message }: { message: MessageDetailType }) {
+  const rawDownloadUrl = `/api/messages/${encodeURIComponent(message.id)}/raw`;
+
   return (
     <header className="flex flex-col gap-2">
       <p className="text-[13px] text-muted-foreground">{new Date(message.receivedAt).toLocaleString()}</p>
-      <h2 className="text-[22px] leading-snug font-semibold">{message.subject || '(No subject)'}</h2>
-      <p className="text-[13px] text-muted-foreground">
-        {message.from || 'unknown'} -&gt; {message.to.join(', ') || 'unknown'}
-      </p>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0">
+          <h2 className="text-[22px] leading-snug font-semibold">{message.subject || '(No subject)'}</h2>
+          <p className="text-[13px] text-muted-foreground">
+            {message.from || 'unknown'} -&gt; {message.to.join(', ') || 'unknown'}
+          </p>
+        </div>
+        <Button asChild variant="outline" size="sm">
+          <a href={rawDownloadUrl} download={`${message.id}.eml`} className="inline-flex">
+            <Download data-icon="inline-start" />
+            Export .eml
+          </a>
+        </Button>
+      </div>
       {message.attachments.length > 0 ? <AttachmentList attachments={message.attachments} messageId={message.id} /> : null}
     </header>
   );

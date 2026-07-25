@@ -23,6 +23,9 @@ describe('MessageDetail', () => {
     const preview = screen.getByTitle('HTML email preview') as HTMLIFrameElement;
     expect(preview.getAttribute('srcdoc')).toBe('<h1>Hello HTML</h1>');
 
+    expect(screen.getByRole('link', { name: /Export \.eml/i }).getAttribute('href')).toBe('/api/messages/message-1/raw');
+    expect(screen.getByRole('link', { name: /Export \.eml/i }).getAttribute('download')).toBe('message-1.eml');
+
     selectTab('Text');
     expect(screen.getByText('Hello text')).not.toBeNull();
 
