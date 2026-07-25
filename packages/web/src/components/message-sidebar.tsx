@@ -256,8 +256,10 @@ function MessageListItem({
           <Button
             type="button"
             variant="ghost"
-            size="xs"
+            size="icon-xs"
+            aria-label={isDeleting ? 'Deleting message' : 'Delete message'}
             disabled={isDeleting}
+            title={isDeleting ? 'Deleting message' : 'Delete message'}
             onClick={(event) => {
               event.stopPropagation();
               onRequestDelete(message.id);
@@ -267,7 +269,6 @@ function MessageListItem({
             }}
           >
             <Trash2 data-icon="inline-start" />
-            {isDeleting ? 'Deleting...' : 'Delete'}
           </Button>
         </span>
       </span>

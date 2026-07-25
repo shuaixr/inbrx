@@ -39,7 +39,7 @@ describe('MessageSidebar', () => {
     );
 
     const row = screen.getByText('First message');
-    const rowDeleteButton = within(row.closest('div') as HTMLDivElement).getByRole('button', { name: /^Delete$/ });
+    const rowDeleteButton = within(row.closest('div') as HTMLDivElement).getByRole('button', { name: 'Delete message' });
 
     act(() => {
       fireEvent.click(rowDeleteButton);
@@ -85,7 +85,7 @@ describe('MessageSidebar', () => {
     );
 
     const row = screen.getByText('First message');
-    const rowDeleteButton = within(row.closest('div') as HTMLDivElement).getByRole('button', { name: /^Deleting...$/ });
+    const rowDeleteButton = within(row.closest('div') as HTMLDivElement).getByRole('button', { name: 'Deleting message' });
 
     expect(rowDeleteButton).toHaveProperty('disabled', true);
   });

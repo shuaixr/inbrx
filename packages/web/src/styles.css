@@ -27,6 +27,12 @@
 }
 
 @layer components {
+  [data-slot='scroll-area-viewport'] > div {
+    display: block !important;
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
   .inbrx-code .hljs-keyword,
   .inbrx-code .hljs-built_in,
   .inbrx-code .hljs-literal,
